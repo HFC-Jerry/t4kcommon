@@ -262,7 +262,7 @@ MenuNode *menu_TranslateNode(xmlNode *node) {
 	/* Now add child nodes. */
 	if(xmlStrcasecmp(node->name, (const xmlChar *)"menu") == 0) {
 	    i = 0;
-	    for(child = node->children; child; child = child->next) {
+	    for(xmlNode* child = node->children; child; child = child->next) {
 		if(child->type == XML_ELEMENT_NODE) {
 		    tnode->submenu[i++] = menu_TranslateNode(child);
 		}
@@ -393,19 +393,19 @@ void T4K_UnloadMenus(void)
 
     if(stop_button)
     {
-	SDL_FreeSurface(stop_button);
+	SDL_DestroySurface(stop_button);
 	stop_button = NULL;
     }
 
     if(prev_arrow)
     {
-	SDL_FreeSurface(prev_arrow);
+	SDL_DestroySurface(prev_arrow);
 	prev_arrow = NULL;
     }
 
     if(next_arrow)
     {
-	SDL_FreeSurface(next_arrow);
+	SDL_DestroySurface(next_arrow);
 	next_arrow = NULL;
     }
 
@@ -427,15 +427,19 @@ void T4K_UnloadMenus(void)
    running handle_activity()
    this function is a modified copy of choose_menu_item()
    */
-int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*handle_event)(SDL_Event*), void (*handle_animations)(), int (*handle_activity)(int, int))
+int T4K_RunMenu(int index, bool return_choice,
+                void (*draw_background)(),
+                int (*handle_event)(SDL_Event*),
+                void (*handle_animations)(),
+                int (*handle_activity)(int, int))
 {
-    SDL_Surface** menu_item_unselected = NULL;
-    SDL_Surface** menu_item_selected = NULL;
-    SDL_Surface* title_surf;
     SDL_Event event;
     MenuNode* menu = menus[index];
     MenuNode* tmp_node;
-
+    SDL_Window* window;
+    SDL_Surface** menu_item_unselected = NULL;
+    SDL_Surface** menu_item_selected = NULL;
+    SDL_Surface* title_surf = NULL;
     SDL_Rect tmp_rect;
     sprite* tmp_sprite;
     int i;
@@ -443,30 +447,31 @@ int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*
     int first_loop = 1;
     int items;
     int old_w, old_h;
-
     int action = NONE;
+    int w, h;
 
-    Uint32 frame_start = 0;       //For keeping frame rate constant
+    Uint32 frame_start = 0;
     Uint32 frame_now = 0;
     Uint32 frame_counter = 0;
-    //int loc = -1;                  //The currently selected menu item
-    int loc = 0;                  //Start with focus on first item
+    int loc = 0;
     int old_loc = 0;
     int click_flag = 1;
     int using_scroll = 0;
 
-    internal_res_switch_handler(&T4K_PrerenderAll);
+    // Get window and initial size
+    window = SDL_GetWindowFromSurface(T4K_GetScreen());
+    get_window_size(window, &w, &h);
+    T4K_PrerenderAll();
 
-    for(;;) /* one loop body execution for one menu page */
+    for(;;)
     {
-	DEBUGMSG(debug_menu, "run_menu(): drawing whole new menu page\n");
+        DEBUGMSG(debug_menu, "run_menu(): drawing whole new menu page\n");
 
-	draw_background();
+        draw_background();
 
-	/* render buttons for current menu page */
-	menu_item_unselected = render_buttons(menu, false);
-	menu_item_selected = render_buttons(menu, true);
-	items = min(menu->entries_per_screen, menu->submenu_size - menu->first_entry);
+        menu_item_unselected = render_buttons(menu, false);
+        menu_item_selected = render_buttons(menu, true);
+        items = menu_min(menu->entries_per_screen, menu->submenu_size - menu->first_entry);
 
 	/* draw buttons */
 	DEBUGMSG(debug_menu, "run_menu(): drawing %d buttons\n", items);
@@ -503,40 +508,41 @@ int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*
 	    menu_title_rect.y = menu_rect.y - menu_title_rect.h;
 	    title_surf = T4K_BlackOutline(_(menu->title), menu->font_size, &red);
 	    SDL_BlitSurface(title_surf, NULL, T4K_GetScreen(), &menu_title_rect);
-	    SDL_FreeSurface(title_surf);
+	    SDL_DestroySurface(title_surf);
 	}
 
 	prerender_panel();
 
-	SDL_UpdateRect(T4K_GetScreen(), 0, 0, 0, 0);
+	// Update screen using SDL3 API
+	update_screen_and_flip(T4K_GetScreen());
 
-	SDL_WM_GrabInput(SDL_GRAB_OFF);
+	// Release mouse grab using SDL3 API
+	SDL_SetWindowMouseGrab(window, false);
 
-	while (SDL_PollEvent(&event));  // clear pending events
+	while (SDL_PollEvent(&event)); // clear pending events
 
 	/******** Main loop: *********/
 	stop = false;
 	DEBUGMSG(debug_menu, "run_menu(): entering menu loop\n");
 	while (!stop)
 	{
-	    frame_start = SDL_GetTicks();         /* For keeping frame rate constant.*/
+	    frame_start = SDL_GetTicks();
 
 	    action = NONE;
 	    while (!stop && (SDL_PollEvent(&event) || first_loop))
 	    {
 		switch (event.type)
 		{
-		    /* user decided to quit the application (for example by closing the window) */
-		    case SDL_QUIT:
+		    case SDL_EVENT_QUIT:
 			{
 			    T4K_FreeSurfaceArray(menu_item_unselected, items);
 			    T4K_FreeSurfaceArray(menu_item_selected, items);
 			    if(desc_panel != NULL)
-				SDL_FreeSurface(desc_panel);
+				SDL_DestroySurface(desc_panel);
 			    return QUIT;
 			}
 
-		    case SDL_MOUSEMOTION:
+		    case SDL_EVENT_MOUSE_MOTION:
 			{
 			    if(!using_scroll)
 				loc = -1;
@@ -592,10 +598,10 @@ int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*
 			    break;
 			}
 
-		    case SDL_MOUSEBUTTONDOWN:
+		    case SDL_EVENT_MOUSE_BUTTON_DOWN:
 			{
-			    /* Handle scroll events: */
-			    if(event.button.button == SDL_BUTTON_WHEELUP)
+			    /* Handle mouse wheel in SDL3 */
+			    if (event.wheel.y > 0) // Scroll up
 			    {
 				using_scroll = 1;
 				if(snd_hover)
@@ -611,8 +617,7 @@ int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*
 				}
 				break;
 			    }
-
-			    else if(event.button.button == SDL_BUTTON_WHEELDOWN)
+			    else if (event.wheel.y < 0) // Scroll down 
 			    {
 				using_scroll = 1;
 				if(snd_hover)
@@ -680,11 +685,11 @@ int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*
 			    break;
 			} /* End of case SDL_MOUSEDOWN */
 
-		    case SDL_KEYDOWN:
+		    case SDL_EVENT_KEY_DOWN:
 			{
 			    using_scroll = 0;
-			    /* Proceed according to particular key pressed: */
-			    switch (event.key.keysym.sym)
+			    // Access key directly from SDL3 keyboard event
+			    switch (event.key.key)
 			    {
 				case SDLK_ESCAPE:
 				    {
@@ -703,9 +708,9 @@ int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*
 				    }
 
 				    /* Go to previous page, if present: */
+				case SDLK_H:  // Vim-like
 				case SDLK_LEFT:
 				case SDLK_PAGEUP:
-				case SDLK_h:   //(Vim-like, see also below.)
 				    {
 					if(snd_click)
 					    T4K_PlaySound(snd_click);
@@ -715,9 +720,9 @@ int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*
 				    }
 
 				    /* Go to next page, if present: */
+				case SDLK_L:
 				case SDLK_RIGHT:
 				case SDLK_PAGEDOWN:
-				case SDLK_l:
 				    {
 					if(snd_click)
 					    T4K_PlaySound(snd_click);
@@ -727,8 +732,8 @@ int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*
 				    }
 
 				    /* Go up one entry, if present: */
+				case SDLK_K:
 				case SDLK_UP:
-				case SDLK_k:    // For grade-school Vim users
 				    {
 					if(snd_hover)
 					    T4K_PlaySound(snd_hover);
@@ -744,8 +749,8 @@ int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*
 					break;
 				    }
 
+				case SDLK_J:
 				case SDLK_DOWN:
-				case SDLK_j:    // For grade-school Vim users
 				    {
 					if(snd_hover)
 					    T4K_PlaySound(snd_hover);
@@ -764,7 +769,7 @@ int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*
 				case SDLK_TAB:
 				    {
 					/* See if [Shift] pressed to decide if we go up or down: */
-					if(event.key.keysym.mod & KMOD_SHIFT) //go up
+					if(event.key.mod & SDL_KMOD_SHIFT) //go up
 					{
 					    if(snd_hover)
 						T4K_PlaySound(snd_hover);
@@ -836,17 +841,16 @@ int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*
 		if (T4K_HandleStdEvents(&event) )
 		    stop = true;
 
-		/* handle button focus */
-		if (old_loc != loc || first_loop || event.key.keysym.sym == SDLK_F10) {
-		    DEBUGMSG(debug_menu, "run_menu(): changed button focus, old=%d, new=%d\n", old_loc, loc);
+		/* handle button focus */                if (old_loc != loc || first_loop || event.key.key == SDLK_F10) {
+                    DEBUGMSG(debug_menu, "run_menu(): changed button focus, old=%d, new=%d\n", old_loc, loc);
 
-		    first_loop = 0;
+                    first_loop = 0;
 
-		    int key = event.key.keysym.sym;
-
-		    if (key == SDLK_F10) {
-			T4K_PrerenderAll();	 // Important when the screen is being RESIZED
-			prerender_panel();   // To adjust the description panel size with new resolution
+                    SDL_Keycode key = event.key.key;                    if (key == SDLK_F10) {
+                        int width, height;
+                        get_window_size(window, &width, &height);
+                        T4K_PrerenderAll();	 // Important when the screen is being RESIZED
+                        prerender_panel();   // To adjust the description panel size with new resolution
 			if (loc == -1 && old_loc == -1)
 			    loc = 0;
 			else if (loc == -1)
@@ -894,7 +898,7 @@ int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*
 			    char out[256];
 			    int char_width;
 			    // Clear old rendered text:
-			    SDL_FreeSurface(desc_prerendered);
+			    SDL_DestroySurface(desc_prerendered);
 			    desc_prerendered = NULL;
 			    if(desc == NULL)
 				desc = "";
@@ -966,7 +970,11 @@ int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*
 					    return QUIT;
 					}
 					if(old_w != T4K_GetScreen()->w || old_h != T4K_GetScreen()->h)
-					    T4K_PrerenderAll(); /* resolution has changed */
+                                            {
+                                                int new_w, new_h;
+                                                get_window_size(window, &new_w, &new_h);
+                                                T4K_PrerenderAll(); /* resolution has changed */
+                                            }
 				    }
 				}
 			    }
@@ -1020,7 +1028,7 @@ int T4K_RunMenu(int index, bool return_choice, void (*draw_background)(), int (*
 				char out[256];
 				int char_width;
 				// Clear old rendered text:
-				SDL_FreeSurface(desc_prerendered);
+				SDL_DestroySurface(desc_prerendered);
 				desc_prerendered = NULL;
 				if(desc == NULL)
 				desc = "";
@@ -1101,7 +1109,7 @@ void prerender_panel() {
 	T4K_GetScreen()->w * desc_panel_pos[2],
 	T4K_GetScreen()->h * desc_panel_pos[3]};
     if(desc_panel != NULL)
-	SDL_FreeSurface(desc_panel);
+	SDL_DestroySurface(desc_panel);
     desc_panel = T4K_CreateButton(panelclip.w - panelclip.x, panelclip.h - panelclip.y, 8, 0xff, 0xff, 0xff, 100);
     SDL_BlitSurface(desc_panel, NULL, T4K_GetScreen(), &panelclip);
     SDL_BlitSurface(T4K_GetScreen(), &panelclip, desc_panel, NULL);
@@ -1114,25 +1122,27 @@ SDL_Surface** render_buttons(MenuNode* menu, bool selected)
     SDL_Rect curr_rect;
     SDL_Surface* tmp_surf = NULL;
     int i;
-    int items = min(menu->entries_per_screen, menu->submenu_size - menu->first_entry);
+    int items = menu_min(menu->entries_per_screen, menu->submenu_size - menu->first_entry);
 
-    menu_items = (SDL_Surface**) malloc(items * sizeof(SDL_Surface*));
+    menu_items = (SDL_Surface**)malloc(items * sizeof(SDL_Surface*));
     if(NULL == menu_items)
     {
-	DEBUGMSG(debug_menu, "render_buttons(): failed to allocate memory for buttons!\n");
-	return NULL;  // error
+        DEBUGMSG(debug_menu, "render_buttons(): failed to allocate memory for buttons!\n");
+        return NULL;  // error
     }
 
-    for (i = 0; i < items; i++)
+    for(i = 0; i < items; i++)
     {
-	curr_rect = menu->submenu[menu->first_entry + i]->button_rect;
-	menu_items[i] = SDL_CreateRGBSurface(SDL_SWSURFACE|SDL_SRCALPHA,
-		curr_rect.w,
-		curr_rect.h,
-		32,
-		rmask, gmask, bmask, amask);
+        curr_rect = menu->submenu[menu->first_entry + i]->button_rect;
+        menu_items[i] = SDL_CreateSurface(curr_rect.w, curr_rect.h, SDL_PIXELFORMAT_RGBA32);
 
-	SDL_BlitSurface(T4K_GetScreen(), &curr_rect, menu_items[i], NULL);
+        if(!menu_items[i])
+        {
+            DEBUGMSG(debug_menu, "render_buttons(): failed to create button surface!\n");
+            T4K_FreeSurfaceArray(menu_items, i);
+            return NULL;
+        }
+
 	/* button */
 	if(selected)
 	    tmp_surf = T4K_CreateButton(curr_rect.w, curr_rect.h, button_radius * curr_rect.h, SEL_RGBA);
@@ -1140,13 +1150,13 @@ SDL_Surface** render_buttons(MenuNode* menu, bool selected)
 	    tmp_surf = T4K_CreateButton(curr_rect.w, curr_rect.h, button_radius * curr_rect.h, REG_RGBA);
 
 	SDL_BlitSurface(tmp_surf, NULL, menu_items[i], NULL);
-	SDL_FreeSurface(tmp_surf);
+	SDL_DestroySurface(tmp_surf);
 
 	/* text */
 	tmp_surf = T4K_BlackOutline(_(menu->submenu[menu->first_entry + i]->title),
 		menu->font_size, selected ? &yellow : &white);
 	SDL_BlitSurface(tmp_surf, NULL, menu_items[i], &menu->submenu[menu->first_entry + i]->text_rect);
-	SDL_FreeSurface(tmp_surf);
+	SDL_DestroySurface(tmp_surf);
     }
 
     return menu_items;
@@ -1187,7 +1197,7 @@ void prerender_menu(MenuNode* menu)
 	{
 	    max_text_h = max(max_text_h, temp_surf->h);
 	    max_text_w = max(max_text_w, temp_surf->w);
-	    SDL_FreeSurface(temp_surf);
+	    SDL_DestroySurface(temp_surf);
 	}
     }
 
@@ -1437,36 +1447,35 @@ void T4K_SetMenuFontSize(MFStrategy strategy, int size)
 }
 /* prerender arrows, stop button and all non-NULL menus from menus[] array
    this function should be invoked after every resolution change */
-void T4K_PrerenderAll()
+void T4K_PrerenderAll(void)
 {
     int i;
 
-    T4K_SetRect(&menu_rect, menu_pos);
+    // Get current window size
+    SDL_Window* window = SDL_GetWindowFromSurface(T4K_GetScreen());
+    int w, h;
+    SDL_GetWindowSize(window, &w, &h);
 
-    T4K_SetRect(&stop_rect, stop_pos);
-    if(stop_button)
-	SDL_FreeSurface(stop_button);
-    stop_button = T4K_LoadImageOfBoundingBox(stop_path, IMG_ALPHA, stop_rect.w, stop_rect.h);
-    /* move button to the right */
-    stop_rect.x = T4K_GetScreen()->w - stop_button->w;
+    // Update menu positions based on new size
+    menu_rect.x = w * menu_pos[0];
+    menu_rect.y = h * menu_pos[1];
+    menu_rect.w = w * menu_pos[2];
+    menu_rect.h = h * menu_pos[3];
 
-    T4K_SetRect(&prev_rect, prev_pos);
-    if(prev_arrow)
-	SDL_FreeSurface(prev_arrow);
-    prev_arrow = T4K_LoadImageOfBoundingBox(prev_path, IMG_ALPHA, prev_rect.w, prev_rect.h);
-    if(prev_gray)
-	SDL_FreeSurface(prev_gray);
-    prev_gray = T4K_LoadImageOfBoundingBox(prev_gray_path, IMG_ALPHA, prev_rect.w, prev_rect.h);
-    /* move button to the right */
-    prev_rect.x += prev_rect.w - prev_arrow->w;
+    stop_rect.x = w * stop_pos[0];
+    stop_rect.y = h * stop_pos[1];
+    stop_rect.w = w * stop_pos[2];
+    stop_rect.h = h * stop_pos[3];
 
-    T4K_SetRect(&next_rect, next_pos);
-    if(next_arrow)
-	SDL_FreeSurface(next_arrow);
-    next_arrow = T4K_LoadImageOfBoundingBox(next_path, IMG_ALPHA, next_rect.w, next_rect.h);
-    if(next_gray)
-	SDL_FreeSurface(next_gray);
-    next_gray = T4K_LoadImageOfBoundingBox(next_gray_path, IMG_ALPHA, next_rect.w, next_rect.h);
+    prev_rect.x = w * prev_pos[0];
+    prev_rect.y = h * prev_pos[1];
+    prev_rect.w = w * prev_pos[2];
+    prev_rect.h = h * prev_pos[3];
+
+    next_rect.x = w * next_pos[0];
+    next_rect.y = h * next_pos[1];
+    next_rect.w = w * next_pos[2];
+    next_rect.h = h * next_pos[3];
 
     if (font_strategy == MF_EXACTLY)
 	; //no fitting necessary
@@ -1482,19 +1491,15 @@ void T4K_PrerenderAll()
     SDL_UpdateRect(T4K_GetScreen(), 0, 0, 0, 0);
 }
 
-int min(int a, int b)
-{
-    if(a < b) return a;
-    else return b;
+static void update_screen_and_flip(SDL_Surface* screen) {
+    SDL_UpdateWindowSurface(SDL_GetWindowFromSurface(screen));
 }
 
-int max(int a, int b)
-{
-    if(a > b) return a;
-    else return b;
+// Helper function for window resolution
+static void get_window_size(SDL_Window* window, int* w, int* h) {
+    SDL_GetWindowSize(window, w, h);
 }
 
-
-
-
-
+static int menu_min(int a, int b) {
+    return (a < b) ? a : b;
+}

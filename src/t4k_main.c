@@ -26,9 +26,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "t4k_common.h"
 #include "t4k_globals.h"
-
+#include "SDL3/SDL_events.h"
+#include <stdio.h>
+#include <stdlib.h>
 #ifdef HAVE_LIBSDL_NET
-#include "SDL_net.h"
+#include "SDL3_net/SDL_net.h"
 #endif
 
 int debug_status;
@@ -94,8 +96,8 @@ int InitT4KCommon(int debug_flags)
 void CleanupT4KCommon(void)
 {
     int frequency, channels, n_timesopened;
-    Uint16 format;
-
+    SDL_AudioFormat format = 0;
+//##    Uint16 format;
     // Close the audio mixer. We have to do this at least as many times
     // as it was opened.
     n_timesopened = Mix_QuerySpec(&frequency, &format, &channels);
@@ -119,31 +121,20 @@ void CleanupT4KCommon(void)
 }
 
 
-int T4K_HandleStdEvents (const SDL_Event* event)
+int T4K_HandleStdEvents(const SDL_Event* event)
 {
     int ret = 0;
 
-    if (event->type != SDL_KEYDOWN)
-	return 0;
+    // Handle keyboard events with SDL3 event type
+    if (event->type != SDL_EVENT_KEY_DOWN)
+        return 0;
 
-    SDLKey key = event->key.keysym.sym;
-
-    /* Toggle screen mode: */
-    if (key == SDLK_F10)
+    // Access keycode directly from the SDL3 keyboard event
+    if (event->key.key == SDLK_F10)
     {
-	//    Opts_SetGlobalOpt(FULLSCREEN, !Opts_GetGlobalOpt(FULLSCREEN) );
-	T4K_SwitchScreenMode();
-	//    game_recalc_positions();
-	ret = 1;
+        T4K_SwitchScreenMode();
+        ret = 1;
     }
-
-    /* Toggle music: */
-#ifndef NOSOUND
-    else if (key == SDLK_F11)
-    {
-	T4K_AudioToggle();
-    }
-#endif
 
     return ret;
 }

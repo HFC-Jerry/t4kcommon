@@ -36,11 +36,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #include <png.h>
 static int do_png_save(FILE * fi, const char *const fname, SDL_Surface * surf);
 static void savePNG(SDL_Surface* surf,char* fn); //TODO this could be part of the API
+static Uint32 get_pixel(SDL_Surface* surf, int x, int y);
 #endif
 
 #ifdef HAVE_RSVG
 #include<librsvg/rsvg.h>
-#include<librsvg/rsvg-cairo.h>
+//## #include<librsvg/rsvg-cairo.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #endif
@@ -153,7 +154,7 @@ void T4K_AddDataPrefix(const char* path)
 
 /* Look for a file as an absolute path, then in
    potential install directories */
-const char* find_file(const char* base_name)
+/*##const char* find_file(const char* base_name)
 {
     static char tmp_path[T4K_PATH_MAX];
     if (T4K_CheckFile(base_name))
@@ -164,6 +165,48 @@ const char* find_file(const char* base_name)
     snprintf(tmp_path, T4K_PATH_MAX, "%s/%s", COMMON_DATA_PREFIX, base_name);
     if (T4K_CheckFile(tmp_path))
 	return tmp_path;
+    return "";	
+}		*/
+
+const char* find_file(const char* base_name)
+{
+    static char tmp_path[T4K_PATH_MAX];
+    if (!base_name) {
+        DEBUGMSG(debug_loaders, "find_file(): base_name is NULL\n");
+        return "";
+    }
+
+    // Check if the base_name exists as-is
+    if (T4K_CheckFile(base_name))
+        return base_name;
+
+    size_t base_len = strlen(base_name);
+
+    // Try app_prefix_path[0]
+    size_t prefix_len = strlen(app_prefix_path[0]);
+    size_t required_len = prefix_len + 1 + base_len + 1; // +1 for '/', +1 for null terminator
+    if (required_len > T4K_PATH_MAX) {
+        DEBUGMSG(debug_loaders, "find_file(): Path too long for %s/%s\n", app_prefix_path[0], base_name);
+    } else {
+        if (snprintf(tmp_path, T4K_PATH_MAX, "%s/%s", app_prefix_path[0], base_name) >= T4K_PATH_MAX) {
+            DEBUGMSG(debug_loaders, "find_file(): Path too long for %s/%s\n", app_prefix_path[0], base_name);
+            return "";
+        }
+        if (T4K_CheckFile(tmp_path))
+            return tmp_path;
+    }
+
+    // Try COMMON_DATA_PREFIX
+    prefix_len = strlen(COMMON_DATA_PREFIX);
+    required_len = prefix_len + 1 + base_len + 1;
+    if (required_len > T4K_PATH_MAX) {
+        DEBUGMSG(debug_loaders, "find_file(): Path too long for %s/%s\n", COMMON_DATA_PREFIX, base_name);
+    } else {
+        snprintf(tmp_path, T4K_PATH_MAX, "%s/%s", COMMON_DATA_PREFIX, base_name);
+        if (T4K_CheckFile(tmp_path))
+            return tmp_path;
+    }
+
     return "";
 }
 #ifdef HAVE_RSVG
@@ -206,13 +249,61 @@ int get_number_of_frames_from_svg(const char* file_name) {
     return 0;
 }
 
-
-/* Load a layer of SVG file and resize it to given dimensions.
+/*##
+ Load a layer of SVG file and resize it to given dimensions.
    If width or height is negative no resizing is applied.
    If layer = NULL then the whole image is loaded.
    layer_name must be preceded with a '#' symbol.
    Return NULL on failure.
-   (partly based on TuxPaint's SVG loading function) */
+   (partly based on TuxPaint's SVG loading function) 
+SDL_Surface* load_svg(const char* file_name, int width, int height, const char* layer_name)
+{
+ //##   SDL_Surface* dest;
+    RsvgHandle* file_handle;
+	sprite* new_sprite;
+    char lay_name[20];
+    int i;
+
+//##    DEBUGMSG(debug_loaders, "load_svg(): loading %s\n", file_name);
+	DEBUGMSG(debug_loaders, "load_svg_sprite(): loading sprite from %s, width = %d, height = %d\n", file_name, width, height);
+
+//##    rsvg_init();
+
+    file_handle = rsvg_handle_new_from_file(file_name, NULL);
+    if(NULL == file_handle)
+    {
+		DEBUGMSG(debug_loaders, "load_svg(): file %s not found\n", file_name);
+//##	rsvg_term();
+		return NULL;
+    }
+
+//##    dest = render_svg_from_handle(file_handle, width, height, layer_name);
+
+//##    g_object_unref(file_handle);
+//##    rsvg_term();
+
+//##    return dest;
+	new_sprite = malloc(sizeof(sprite));
+    if (new_sprite == NULL)
+    {
+        DEBUGMSG(debug_loaders, "malloc(): can't allocate memory for a new sprite\n");
+        g_object_unref(file_handle);
+        return NULL;
+    }
+    new_sprite->default_img = render_svg_from_handle(file_handle, width, height, "#default");
+
+    new_sprite->num_frames = get_number_of_frames_from_svg(file_name);
+    DEBUGMSG(debug_loaders, "load_svg_sprite(): loading %d frames\n", new_sprite->num_frames);
+
+    for(i = 0; i < new_sprite->num_frames; i++)
+    {
+        snprintf(lay_name, sizeof(lay_name), "#frame%d", i);
+        new_sprite->frame[i] = render_svg_from_handle(file_handle, width, height, lay_name);
+    }
+
+    g_object_unref(file_handle);
+    return new_sprite;
+}		*/
 SDL_Surface* load_svg(const char* file_name, int width, int height, const char* layer_name)
 {
     SDL_Surface* dest;
@@ -220,24 +311,18 @@ SDL_Surface* load_svg(const char* file_name, int width, int height, const char* 
 
     DEBUGMSG(debug_loaders, "load_svg(): loading %s\n", file_name);
 
-    rsvg_init();
-
     file_handle = rsvg_handle_new_from_file(file_name, NULL);
     if(NULL == file_handle)
     {
-	DEBUGMSG(debug_loaders, "load_svg(): file %s not found\n", file_name);
-	rsvg_term();
-	return NULL;
+        DEBUGMSG(debug_loaders, "load_svg(): file %s not found\n", file_name);
+        return NULL;
     }
 
     dest = render_svg_from_handle(file_handle, width, height, layer_name);
 
     g_object_unref(file_handle);
-    rsvg_term();
-
     return dest;
 }
-
 sprite* load_svg_sprite(const char* file_name, int width, int height)
 {
     RsvgHandle* file_handle;
@@ -247,13 +332,13 @@ sprite* load_svg_sprite(const char* file_name, int width, int height)
 
     DEBUGMSG(debug_loaders, "load_svg_sprite(): loading sprite from %s, width = %d, height = %d\n", file_name, width, height);
 
-    rsvg_init();
+//##   rsvg_init();
 
     file_handle = rsvg_handle_new_from_file(file_name, NULL);
     if(NULL == file_handle)
     {
 	DEBUGMSG(debug_loaders, "load_svg_sprite(): file %s not found\n", file_name);
-	rsvg_term();
+//##	rsvg_term();
 	return NULL;
     }
 
@@ -261,7 +346,7 @@ sprite* load_svg_sprite(const char* file_name, int width, int height)
     if (new_sprite == NULL)
     {
         DEBUGMSG(debug_loaders, "malloc(): can't allocate memory for a new sprite\n");
-        rsvg_term();
+//##        rsvg_term();
         return NULL;
     }
     new_sprite->default_img = render_svg_from_handle(file_handle, width, height, "#default");
@@ -269,15 +354,21 @@ sprite* load_svg_sprite(const char* file_name, int width, int height)
     /* get number of frames from description */
     new_sprite->num_frames = get_number_of_frames_from_svg(file_name);
     DEBUGMSG(debug_loaders, "load_svg_sprite(): loading %d frames\n", new_sprite->num_frames);
-
+/*##
     for(i = 0; i < new_sprite->num_frames; i++)
     {
 	sprintf(lay_name, "#frame%d", i);
 	new_sprite->frame[i] = render_svg_from_handle(file_handle, width, height, lay_name);
     }
+	*/
+	for(i = 0; i < new_sprite->num_frames; i++)
+	{
+		snprintf(lay_name, sizeof(lay_name), "#frame%d", i);
+		new_sprite->frame[i] = render_svg_from_handle(file_handle, width, height, lay_name);
+	}
 
     g_object_unref(file_handle);
-    rsvg_term();
+//##    rsvg_term();
 
     return new_sprite;
 }
@@ -291,57 +382,67 @@ SDL_Surface* render_svg_from_handle(RsvgHandle* file_handle, int width, int heig
     cairo_t* context;
     SDL_Surface* dest;
     float scale_x, scale_y;
-    Uint32 Rmask, Gmask, Bmask, Amask;
-
-    rsvg_handle_get_dimensions(file_handle, &dimensions);
-
+    //##Uint32 Rmask, Gmask, Bmask, Amask;
+    //##rsvg_handle_get_dimensions(file_handle, &dimensions);
+	double intrinsic_width, intrinsic_height;
+    if (!rsvg_handle_get_intrinsic_size_in_pixels(file_handle, &intrinsic_width, &intrinsic_height)) {
+        DEBUGMSG(debug_loaders, "render_svg_from_handle(): Failed to get intrinsic size\n");
+        return NULL;
+    }
     /* set scale_x and scale_y */
-    if(width < 0 || height < 0)
+  if(width < 0 || height < 0)
     {
-	width = dimensions.width;
-	height = dimensions.height;
-	scale_x = 1.0;
-	scale_y = 1.0;
+        width = (int)intrinsic_width;
+        height = (int)intrinsic_height;
+        scale_x = 1.0;
+        scale_y = 1.0;
     }
     else
     {
-	scale_x = (float)width / dimensions.width;
-	scale_y = (float)height / dimensions.height;
+        scale_x = (float)width / intrinsic_width;
+        scale_y = (float)height / intrinsic_height;
     }
-
-    /* set color masks */
+    /*## set color masks 
     Rmask = T4K_GetScreen()->format->Rmask;
     Gmask = T4K_GetScreen()->format->Gmask;
     Bmask = T4K_GetScreen()->format->Bmask;
     if(T4K_GetScreen()->format->Amask == 0)
-	/* find a free byte to use for Amask */
+	 find a free byte to use for Amask 
 	Amask = ~(Rmask | Gmask | Bmask);
     else
 	Amask = T4K_GetScreen()->format->Amask;
 
     DEBUGMSG(debug_loaders, "render_svg_from_handle(): color masks: R=%u, G=%u, B=%u, A=%u\n",
 	    Rmask, Gmask, Bmask, Amask);
-
-    dest = SDL_CreateRGBSurface(SDL_SWSURFACE | SDL_SRCALPHA,
-	    width, height, T4K_GetScreen()->format->BitsPerPixel, Rmask, Gmask, Bmask, Amask);
+*/
+dest = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_ARGB8888);
+    if (!dest)
+    {
+        DEBUGMSG(debug_loaders, "render_svg_from_handle(): SDL_CreateSurface failed: %s\n", SDL_GetError());
+        return NULL;
+    }
 
     SDL_LockSurface(dest);
     temp_surf = cairo_image_surface_create_for_data(dest->pixels,
-	    CAIRO_FORMAT_ARGB32, dest->w, dest->h, dest->pitch);
+            CAIRO_FORMAT_ARGB32, dest->w, dest->h, dest->pitch);
 
     context = cairo_create(temp_surf);
     if(cairo_status(context) != CAIRO_STATUS_SUCCESS)
     {
-	DEBUGMSG(debug_loaders, "render_svg_from_handle(): error rendering SVG\n");
-	cairo_surface_destroy(temp_surf);
-	return NULL;
+        DEBUGMSG(debug_loaders, "render_svg_from_handle(): error rendering SVG\n");
+        SDL_DestroySurface(dest);
+        cairo_surface_destroy(temp_surf);
+        return NULL;
     }
 
     cairo_scale(context, scale_x, scale_y);
-
-    /* render appropriate layer */
-    rsvg_handle_render_cairo_sub(file_handle, context, layer_name);
-
+    if (!rsvg_handle_render_layer(file_handle, context, layer_name, NULL, NULL)) {
+        DEBUGMSG(debug_loaders, "render_svg_from_handle(): rsvg_handle_render_layer failed\n");
+        SDL_DestroySurface(dest);
+        cairo_surface_destroy(temp_surf);
+        cairo_destroy(context);
+        return NULL;
+    }
     SDL_UnlockSurface(dest);
     cairo_surface_destroy(temp_surf);
     cairo_destroy(context);
@@ -354,7 +455,8 @@ void get_svg_dimensions(const char* file_name, int* width, int* height)
 
     int index = SVGInfoIndex(file_name);
     RsvgHandle* file_handle;
-    RsvgDimensionData dimensions;
+//##RsvgDimensionData dimensions;
+	double intrinsic_width, intrinsic_height;
 
     if (index != -1) //look for cached dimensions
     {
@@ -364,25 +466,31 @@ void get_svg_dimensions(const char* file_name, int* width, int* height)
     }
 
     //FIXME do we really need to initialize and terminate RSVG every time?
-    rsvg_init();
+//##    rsvg_init();
 
     file_handle = rsvg_handle_new_from_file(file_name, NULL);
     if(file_handle == NULL)
     {
 	DEBUGMSG(debug_loaders, "get_svg_dimensions(): file %s not found\n", file_name);
-	rsvg_term();
+//##	rsvg_term();
 	return;
     }
 
-    rsvg_handle_get_dimensions(file_handle, &dimensions);
+/*##    rsvg_handle_get_dimensions(file_handle, &dimensions);
 
     *width = dimensions.width;
-    *height = dimensions.height;
-
+    *height = dimensions.height;	*/
+if (!rsvg_handle_get_intrinsic_size_in_pixels(file_handle, &intrinsic_width, &intrinsic_height)) {
+        DEBUGMSG(debug_loaders, "get_svg_dimensions(): Failed to get intrinsic size\n");
+        g_object_unref(file_handle);
+        return;
+    }
+	*width = (int)intrinsic_width;
+    *height = (int)intrinsic_height;
     g_object_unref(file_handle);
 
     //FIXME see above
-    rsvg_term();
+//##    rsvg_term();
 
     saveSVGInfo(file_name, *width, *height); //save dimensions for quick access
 }
@@ -587,13 +695,13 @@ SDL_Surface* load_image(const char* file_name, int mode, int w, int h, bool prop
 	    height = h;
 	}
 	final_pic = T4K_zoom(loaded_pic, width, height);
-	SDL_FreeSurface(loaded_pic);
+	SDL_DestroySurface(loaded_pic);
 	loaded_pic = final_pic;
 	final_pic = NULL;
     }
 
     final_pic = set_format(loaded_pic, mode);
-    SDL_FreeSurface(loaded_pic);
+    SDL_DestroySurface(loaded_pic);
     DEBUGMSG(debug_loaders, "Leaving load_image()\n\n");
 
     return final_pic;
@@ -613,7 +721,7 @@ void fit_in_rectangle(int* width, int* height, int max_width, int max_height)
 	*height *= min(scale_w, scale_h);
     }
 }
-
+/*##
 SDL_Surface* set_format(SDL_Surface* img, int mode)
 {
     switch (mode & IMG_MODES)
@@ -647,9 +755,79 @@ SDL_Surface* set_format(SDL_Surface* img, int mode)
 
     return NULL;
 }
+*/
+SDL_Surface* set_format(SDL_Surface* img, int mode)
+{
+    if (!img) {
+        DEBUGMSG(debug_loaders, "set_format(): Input surface is NULL\n");
+        return NULL;
+    }
 
+    SDL_Surface* converted = NULL;
+    SDL_Surface* screen = T4K_GetScreen();
+    
+    if (!screen) {
+        DEBUGMSG(debug_loaders, "set_format(): Could not get screen surface\n");
+        return NULL;
+    }
 
-/* T4K_LoadBkgd() : a wrapper for T4K_LoadImage() that optimizes
+    switch (mode & IMG_MODES) {
+        case IMG_REGULAR:
+            DEBUGMSG(debug_loaders, "set_format(): handling IMG_REGULAR mode.\n");
+            converted = SDL_ConvertSurface(img, screen->format);
+            if (!converted) {
+                DEBUGMSG(debug_loaders, "set_format(IMG_REGULAR): %s\n", SDL_GetError());
+                return NULL;
+            }
+            break;
+
+        case IMG_ALPHA:
+            DEBUGMSG(debug_loaders, "set_format(): handling IMG_ALPHA mode.\n");
+            converted = SDL_ConvertSurface(img, SDL_PIXELFORMAT_ARGB8888);
+            if (!converted) {
+                DEBUGMSG(debug_loaders, "set_format(IMG_ALPHA): %s\n", SDL_GetError());
+                return NULL;
+            }
+            break;
+
+        case IMG_COLORKEY:
+            DEBUGMSG(debug_loaders, "set_format(): handling IMG_COLORKEY mode.\n");
+            SDL_LockSurface(img);
+            
+            // Get format details and palette
+            const SDL_PixelFormatDetails* format_details = SDL_GetPixelFormatDetails(img->format);
+            SDL_Palette* palette = SDL_GetSurfacePalette(img);
+            
+            if (!format_details) {
+                DEBUGMSG(debug_loaders, "set_format(): Failed to get pixel format details\n");
+                SDL_UnlockSurface(img);
+                return NULL;
+            }
+            
+            // Map yellow as the color key
+            Uint32 colorkey = SDL_MapRGB(format_details, palette, 255, 255, 0);
+            if (SDL_SetSurfaceColorKey(img, true, colorkey) < 0) {
+                DEBUGMSG(debug_loaders, "SDL_SetColorKey: %s\n", SDL_GetError());
+                SDL_UnlockSurface(img);
+                return NULL;
+            }
+            
+            converted = SDL_ConvertSurface(img, screen->format);
+            SDL_UnlockSurface(img);
+            
+            if (!converted) {
+                DEBUGMSG(debug_loaders, "set_format(IMG_COLORKEY): %s\n", SDL_GetError());
+                return NULL;
+            }
+            break;
+
+        default:
+            DEBUGMSG(debug_loaders, "set_format(): Image mode not recognized\n");
+            return NULL;
+    }
+
+    return converted;
+}/* T4K_LoadBkgd() : a wrapper for T4K_LoadImage() that optimizes
    the format of background image */
 SDL_Surface* T4K_LoadBkgd(const char* file_name, int width, int height)
 {
@@ -666,9 +844,10 @@ SDL_Surface* T4K_LoadBkgd(const char* file_name, int width, int height)
     }
 
     /* turn off transparency, since it's the background */
-    SDL_SetAlpha(orig, SDL_RLEACCEL, SDL_ALPHA_OPAQUE);
-    final_pic = SDL_DisplayFormat(orig); /* optimize the format */
-    SDL_FreeSurface(orig);
+//##    SDL_SetAlpha(orig, SDL_RLEACCEL, SDL_ALPHA_OPAQUE);
+//##    final_pic = SDL_DisplayFormat(orig); 
+	final_pic = SDL_ConvertSurface(orig, T4K_GetScreen()->format);/* optimize the format */
+    SDL_DestroySurface(orig);
 
     return final_pic;
 }
@@ -713,132 +892,170 @@ sprite* load_sprite(const char* name, int mode, int w, int h, bool proportional)
 {
     sprite *new_sprite = NULL;
     int i;
-    char fn[T4K_PATH_MAX]; //the qualified filename relative to the data prefix
-
+    char fn[T4K_PATH_MAX];
 #ifdef HAVE_RSVG
-    char* imgfn = NULL; //absolute filename of an image
-    char cachepath[T4K_PATH_MAX]; //path to the cache directory
-    char pngfn[T4K_PATH_MAX]; //absolute filename to a cached PNG
+    char* imgfn = NULL;
+    char cachepath[T4K_PATH_MAX];
+    char pngfn[T4K_PATH_MAX];
     int width, height;
     bool shouldcache = false;
 
-
     T4K_GetUserDataDir(cachepath, ".t4k_common/caches");
-    /* check if SVG sprite file is present */
     sprintf(fn, IMAGE_DIR "/%s.svg", name);
     imgfn = (char*)find_file(fn);
-    if(imgfn)
+    if (imgfn)
     {
-	//check image dimensions
-	if(proportional)
-	{
-	    //scale the image to fit inside the dimensions, but preserve the aspect
-	    get_svg_dimensions(imgfn, &width, &height);
-	    if(width > 0 && height > 0)
-		fit_in_rectangle(&width, &height, w, h);
-	}
-	else
-	{
-	    width = w;
-	    height = h;
-	}
+        if (proportional)
+        {
+            get_svg_dimensions(imgfn, &width, &height);
+            if (width > 0 && height > 0)
+                fit_in_rectangle(&width, &height, w, h);
+        }
+        else
+        {
+            width = w;
+            height = h;
+        }
 
-	//see if a cached PNG exists
-	sprintf(pngfn, "%s/" IMAGE_DIR "/%sd-%d-%d.png", cachepath, name, width, height);
-	if(T4K_CheckFile(pngfn)==1)
-	{
-	    new_sprite=(sprite*)malloc(sizeof(sprite));
-	    new_sprite->default_img=IMG_Load(pngfn);
-	    i=0;
-	    while(1)
-	    {
-		sprintf(pngfn, "%s/" IMAGE_DIR "/%s%d-%d-%d.png", cachepath, name, i, width, height);
-		if(T4K_CheckFile(pngfn)==1)
+        // Check default image path length
+        int len = snprintf(NULL, 0, "%s/images/%sd-%d-%d.png", cachepath, name, width, height);
+        if (len < 0 || len >= T4K_PATH_MAX) {
+            DEBUGMSG(debug_loaders, "load_sprite(): PNG path too long for %s default image\n", name);
+        } 
+		else 
 		{
-		    new_sprite->frame[i]=IMG_Load(pngfn);
-		    i++;
-		}
-		else break;
-	    }
-	    new_sprite->num_frames=i;
-	}
-	else //couldn't find a cached version, so load it from the original and cache the result
-	{
-	    new_sprite = load_svg_sprite(find_file(fn), width, height);
-	    shouldcache = true;
-	}
+            if (snprintf(pngfn, T4K_PATH_MAX, "%s/images/%sd-%d-%d.png", cachepath, name, width, height) >= T4K_PATH_MAX) {
+                DEBUGMSG(debug_loaders, "load_sprite(): Path too long for default image\n");
+                return NULL;
+            }
+            if (T4K_CheckFile(pngfn) == 1)
+            {
+                new_sprite = (sprite*)malloc(sizeof(sprite));
+                if (!new_sprite) {
+                    DEBUGMSG(debug_loaders, "load_sprite(): Memory allocation failed\n");
+                    return NULL;
+                }
+                new_sprite->default_img = IMG_Load(pngfn);
+                i = 0;
+                while (1)
+                {
+                    len = snprintf(NULL, 0, "%s/images/%s%d-%d-%d.png", cachepath, name, i, width, height);
+                    if (len < 0 || len >= T4K_PATH_MAX) {
+                        DEBUGMSG(debug_loaders, "load_sprite(): PNG path too long for %s frame %d\n", name, i);
+                        break;
+                    }
+                    if (snprintf(pngfn, T4K_PATH_MAX, "%s/images/%s%d-%d-%d.png", cachepath, name, i, width, height) >= T4K_PATH_MAX) {
+                        DEBUGMSG(debug_loaders, "load_sprite(): Path too long for frame %d\n", i);
+                        break;
+                    }
+                    if (T4K_CheckFile(pngfn) == 1)
+                    {
+                        new_sprite->frame[i] = IMG_Load(pngfn);
+                        if (!new_sprite->frame[i]) {
+                            DEBUGMSG(debug_loaders, "load_sprite(): Failed to load frame %d for %s\n", i, name);
+                            break;
+                        }
+                        i++;
+                    }
+                    else
+                        break;
+                }
+                new_sprite->num_frames = i;
+            }
+            else
+            {
+                new_sprite = load_svg_sprite(find_file(fn), width, height);
+                shouldcache = true;
+            }
+        }
 
-	if(new_sprite)
-	{
-	    set_format(new_sprite->default_img, mode);
-	    for(i = 0; i < new_sprite->num_frames; i++)
-		set_format(new_sprite->frame[i], mode);
-	    new_sprite->cur = 0;
+        if (new_sprite)
+        {
+            set_format(new_sprite->default_img, mode);
+            for (i = 0; i < new_sprite->num_frames; i++)
+                set_format(new_sprite->frame[i], mode);
+            new_sprite->cur = 0;
 
-	    width  = new_sprite->default_img->w;
-	    height = new_sprite->default_img->h;
+            width = new_sprite->default_img->w;
+            height = new_sprite->default_img->h;
 
-	    if (shouldcache)
-	    {
-		/* cache loaded sprites in PNG files */
-		sprintf(pngfn, "%s/" IMAGE_DIR "/%sd-%d-%d.png", cachepath, name, width, height);
-		if(T4K_CheckFile(pngfn)!=1)
-		    savePNG(new_sprite->default_img,pngfn);
-		for(i=0; i<new_sprite->num_frames; i++)
-		{
-		    sprintf(pngfn, "%s/" IMAGE_DIR "/%s%d-%d-%d.png", cachepath, name, i, width, height);
-		    if(T4K_CheckFile(pngfn)!=1)
-			savePNG(new_sprite->frame[i],pngfn);
-		}
-	    }
-	}
+            if (shouldcache)
+            {
+                len = snprintf(NULL, 0, "%s/images/%sd-%d-%d.png", cachepath, name, width, height);
+                if (len < 0 || len >= T4K_PATH_MAX) {
+                    DEBUGMSG(debug_loaders, "load_sprite(): Cannot save PNG, path too long for %s default image\n", name);
+                } else {
+                    if (snprintf(pngfn, T4K_PATH_MAX, "%s/images/%sd-%d-%d.png", cachepath, name, width, height) >= T4K_PATH_MAX) {
+                        DEBUGMSG(debug_loaders, "load_sprite(): Cannot save PNG, path too long for default image\n");
+                    } else if (T4K_CheckFile(pngfn) != 1) {
+                        savePNG(new_sprite->default_img, pngfn);
+                    }
+                }
+                for (i = 0; i < new_sprite->num_frames; i++)
+                {
+                    len = snprintf(NULL, 0, "%s/images/%s%d-%d-%d.png", cachepath, name, i, width, height);
+                    if (len < 0 || len >= T4K_PATH_MAX) {
+                        DEBUGMSG(debug_loaders, "load_sprite(): Cannot save PNG, path too long for %s frame %d\n", name, i);
+                    } else {
+                        if (snprintf(pngfn, T4K_PATH_MAX, "%s/images/%s%d-%d-%d.png", cachepath, name, i, width, height) >= T4K_PATH_MAX) {
+                            DEBUGMSG(debug_loaders, "load_sprite(): Cannot save PNG, path too long for frame %d\n", i);
+                        } else if (T4K_CheckFile(pngfn) != 1) {
+                            savePNG(new_sprite->frame[i], pngfn);
+                        }
+                    }
+                }
+            }
+        }
     }
 #endif
 
-    if(!new_sprite)
+    if (!new_sprite)
     {
-	/* SVG sprite was not loaded, try to load it frame by frame from PNG files */
-	new_sprite = (sprite*) malloc(sizeof(sprite));
+        /* Fallback to loading PNG files frame by frame */
+        new_sprite = (sprite*)malloc(sizeof(sprite));
+        if (!new_sprite) {
+            DEBUGMSG(debug_loaders, "load_sprite(): Memory allocation failed in fallback\n");
+            return NULL;
+        }
 
-	sprintf(fn, "%sd.png", name);  // The 'd' means the default image
-	if(proportional)
-	    new_sprite->default_img = T4K_LoadImageOfBoundingBox(fn, mode | IMG_NOT_REQUIRED, w, h);
-	else
-	    new_sprite->default_img = T4K_LoadScaledImage(fn, mode | IMG_NOT_REQUIRED, w, h);
+        sprintf(fn, "%sd.png", name); // Default image
+        if (proportional)
+            new_sprite->default_img = T4K_LoadImageOfBoundingBox(fn, mode | IMG_NOT_REQUIRED, w, h);
+        else
+            new_sprite->default_img = T4K_LoadScaledImage(fn, mode | IMG_NOT_REQUIRED, w, h);
 
-	if(!new_sprite->default_img)
-	    DEBUGMSG(debug_loaders, "load_sprite(): failed to load default image for %s\n", name);
+        if (!new_sprite->default_img)
+            DEBUGMSG(debug_loaders, "load_sprite(): Failed to load default image for %s\n", name);
 
-	new_sprite->cur = 0;
-	new_sprite->num_frames = 0;
-	for(i = 0; i < MAX_SPRITE_FRAMES; i++)
-	{
-	    sprintf(fn, "%s%d.png", name, i);
-	    if(proportional)
-		new_sprite->frame[i] = T4K_LoadImageOfBoundingBox(fn, mode | IMG_NOT_REQUIRED, w, h);
-	    else
-		new_sprite->frame[i] = T4K_LoadScaledImage(fn, mode | IMG_NOT_REQUIRED, w, h);
+        new_sprite->cur = 0;
+        new_sprite->num_frames = 0;
+        for (i = 0; i < MAX_SPRITE_FRAMES; i++)
+        {
+            sprintf(fn, "%s%d.png", name, i);
+            if (proportional)
+                new_sprite->frame[i] = T4K_LoadImageOfBoundingBox(fn, mode | IMG_NOT_REQUIRED, w, h);
+            else
+                new_sprite->frame[i] = T4K_LoadScaledImage(fn, mode | IMG_NOT_REQUIRED, w, h);
 
-	    if(new_sprite->frame[i] == NULL)
-		break;
-	    else
-	    {
-		DEBUGMSG(debug_loaders, "load_sprite(): loaded frame %d of %s\n", i, name);
-		new_sprite->num_frames = i + 1;
-	    }
-	}
+            if (new_sprite->frame[i] == NULL)
+                break;
+            else
+            {
+                DEBUGMSG(debug_loaders, "load_sprite(): Loaded frame %d of %s\n", i, name);
+                new_sprite->num_frames = i + 1;
+            }
+        }
     }
 
-    if(0 == new_sprite->num_frames)
+    if (new_sprite->num_frames == 0)
     {
-	DEBUGMSG(debug_loaders, "load_sprite(): failed to load %s\n", name);
-	free(new_sprite);
-	return NULL;
+        DEBUGMSG(debug_loaders, "load_sprite(): Failed to load %s\n", name);
+        free(new_sprite);
+        return NULL;
     }
 
     return new_sprite;
 }
-
 sprite* T4K_FlipSprite(sprite* in, int X, int Y)
 {
     sprite *out;
@@ -869,14 +1086,14 @@ void T4K_FreeSprite(sprite* gfx)
 	DEBUGMSG(debug_loaders, ".");
 	if (gfx->frame[x])
 	{
-	    SDL_FreeSurface(gfx->frame[x]);
+	    SDL_DestroySurface(gfx->frame[x]);
 	    gfx->frame[x] = NULL;
 	}
     }
 
     if (gfx->default_img)
     {
-	SDL_FreeSurface(gfx->default_img);
+	SDL_DestroySurface(gfx->default_img);
 	gfx->default_img = NULL;
     }
 
@@ -964,73 +1181,97 @@ SDL_Surface *IMG_Load_Cache(const char* fn)
 
 
 #if HAVE_LIBPNG
-//save a surface to file as a PNG.
-void savePNG(SDL_Surface* surf,char* fn)
+/* Get a pixel value from a surface using SDL3's pixel format */
+static Uint32 get_pixel(SDL_Surface* surf, int x, int y)
 {
-    FILE* fi;
-    DIR* dir_ptr;
-    int i;
-    char tempc;
-    i=0;
-    while(fn[i])
-    {
-	if(fn[i]=='/')
-	{
-	    tempc=fn[i+1];
-	    fn[i+1]=0;
+    if (!surf) return 0;
 
-	    /* test if the directory already exists */
-	    dir_ptr = opendir(fn);
-	    if (dir_ptr)
-	    {
-		closedir(dir_ptr);
-	    }
-	    else /* create new directory */
-	    {
-		int status;
+    int bpp = SDL_BYTESPERPIXEL(surf->format);
+    Uint8* pixel = (Uint8*)surf->pixels + y * surf->pitch + x * bpp;
 
-#ifndef BUILD_MINGW32
-		status = mkdir(fn, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-#else
-		status = mkdir(fn);
-#endif
+    switch (bpp) {
+        case 1:
+            return *pixel;
+        case 2:
+            return *(Uint16*)pixel;
+        case 3:
+            return (pixel[0]) | (pixel[1] << 8) | (pixel[2] << 16);
+        case 4:
+            return *(Uint32*)pixel;
+        default:
+            return 0;
+    }
+}
 
-		/* mkdir () returns 0 if successful */
-		if (0 == status)
-		{
-		    /* successful */
-		    DEBUGMSG(debug_loaders, "\nmkdir %s succeeded\n",fn);
-		}
-		else
-		{
-		    DEBUGMSG(debug_loaders, "\nmkdir %s failed\n",fn);
-		    fn[i+1]=tempc;
-		    return;
-		}
-
-	    }
-	    fn[i+1]=tempc;
-
-	} /* end of fn[i]=='/' */
-
-	i++;
-
-    } /* end of while */
-
-    fi = fopen(fn, "wb");
-    if(fi==NULL)
-    {
-	fprintf(stderr, "\nError: Couldn't write to file %s!\n\n", fn);
-	return;
+//save a surface to file as a PNG.
+void savePNG(SDL_Surface* surf, char* fn)
+{
+    if (!surf || !fn) {
+        DEBUGMSG(debug_loaders, "savePNG(): Invalid arguments\n");
+        return;
     }
 
-    if (!do_png_save(fi,fn,surf) )
-    {
-	fprintf(stderr, "PNG Not saved!\n");
-	if (T4K_CheckFile(fn))
-	{
-	    remove(fn);
-	}
+    FILE* fi;
+    DIR* dir_ptr;
+    size_t i = 0;
+    size_t len = strlen(fn);
+
+    // Check for buffer overflow
+    if (len == 0 || len >= T4K_PATH_MAX) {
+        DEBUGMSG(debug_loaders, "savePNG(): Filename too long or empty\n");
+        return;
+    }
+
+    char path_buf[T4K_PATH_MAX];
+    strncpy(path_buf, fn, T4K_PATH_MAX - 1);
+    path_buf[T4K_PATH_MAX - 1] = '\0';
+
+    while (i < len) {
+        if (path_buf[i] == '/') {
+            // Temporarily null-terminate at this position
+            char temp = path_buf[i + 1];
+            path_buf[i + 1] = '\0';
+
+            /* test if the directory already exists */
+            dir_ptr = opendir(path_buf);
+            if (dir_ptr) {
+                closedir(dir_ptr);
+            } else {
+                /* create new directory */
+                int status;
+
+#ifndef BUILD_MINGW32
+                status = mkdir(path_buf, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+#else
+                status = mkdir(path_buf);
+#endif
+
+                if (0 == status) {
+                    DEBUGMSG(debug_loaders, "mkdir %s succeeded\n", path_buf);
+                } else {
+                    DEBUGMSG(debug_loaders, "mkdir %s failed: %s\n", path_buf, strerror(errno));
+                    return;
+                }
+            }
+            path_buf[i + 1] = temp;
+        }
+        i++;
+    }
+
+    fi = fopen(fn, "wb");
+    if (!fi) {
+        DEBUGMSG(debug_loaders, "Error: Couldn't write to file %s: %s\n", fn, strerror(errno));
+        return;
+    }
+
+    if (!do_png_save(fi, fn, surf)) {
+        DEBUGMSG(debug_loaders, "PNG Not saved!\n");
+        fclose(fi);
+        if (T4K_CheckFile(fn)) {
+            if (remove(fn) != 0) {
+                DEBUGMSG(debug_loaders, "Failed to remove incomplete PNG file: %s\n", strerror(errno));
+            }
+        }
     }
 }
 
@@ -1039,122 +1280,116 @@ void savePNG(SDL_Surface* surf,char* fn)
 /* Actually save the PNG data to the file stream: */
 static int do_png_save(FILE * fi, const char *const fname, SDL_Surface * surf)
 {
+    if (!surf || !fi || !fname) {
+        fprintf(stderr, "do_png_save: Invalid arguments\n");
+        return 0;
+    }
+
     png_structp png_ptr;
     png_infop info_ptr;
     png_text text_ptr[4];
     unsigned char **png_rows;
     Uint8 r, g, b, a;
     int x, y, count;
-    Uint32(*getpixel) (SDL_Surface *, int, int) =
-	getpixels[surf->format->BytesPerPixel];
 
+    /* Get pixel format details and palette */
+    const SDL_PixelFormatDetails* format_details = SDL_GetPixelFormatDetails(surf->format);
+    SDL_Palette* palette = SDL_GetSurfacePalette(surf);
+    
+    if (!format_details) {
+        fprintf(stderr, "do_png_save: Invalid surface format\n");
+        return 0;
+    }
 
     png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    if (png_ptr == NULL)
-    {
-	fclose(fi);
-	png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
-
-	fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
-	return 0;
-    }
-    else
-    {
-	info_ptr = png_create_info_struct(png_ptr);
-	if (info_ptr == NULL)
-	{
-	    fclose(fi);
-	    png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
-
-	    fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
-	    //draw_tux_text(TUX_OOPS, strerror(errno), 0);
-	}
-	else
-	{
-	    if (setjmp(png_jmpbuf(png_ptr)))
-	    {
-		fclose(fi);
-		png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
-
-		fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
-		//draw_tux_text(TUX_OOPS, strerror(errno), 0);
-	    }
-	    else
-	    {
-		png_init_io(png_ptr, fi);
-
-	png_set_IHDR(png_ptr, info_ptr, surf->w, surf->h, 8,
-		PNG_COLOR_TYPE_RGB_ALPHA,  PNG_INTERLACE_NONE,
-                PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-
-
-		png_set_sRGB_gAMA_and_cHRM(png_ptr, info_ptr,
-			PNG_sRGB_INTENT_PERCEPTUAL);
-
-		/* Set headers */
-
-		count = 0;
-
-		/*
-		   if (title != NULL && strlen(title) > 0)
-		   {
-		   text_ptr[count].key = "Title";
-		   text_ptr[count].text = title;
-		   text_ptr[count].compression = PNG_TEXT_COMPRESSION_NONE;
-		   count++;
-		   }
-		   */
-
-		text_ptr[count].key = (png_charp) "Software";
-		text_ptr[count].text =
-		    (png_charp) PACKAGE_STRING /*VER_VERSION " (" VER_DATE ")"*/;
-		text_ptr[count].compression = PNG_TEXT_COMPRESSION_NONE;
-		count++;
-
-		png_set_text(png_ptr, info_ptr, text_ptr, count);
-
-		png_write_info(png_ptr, info_ptr);
-
-
-
-		/* Save the picture: */
-
-		png_rows = malloc(sizeof(char *) * surf->h);
-
-		for (y = 0; y < surf->h; y++)
-		{
-		    png_rows[y] = malloc(sizeof(char) * 4 * surf->w);
-
-		    for (x = 0; x < surf->w; x++)
-		    {
-			SDL_GetRGBA(getpixel(surf, x, y), surf->format, &r, &g, &b, &a);
-
-			png_rows[y][x * 4 + 0] = r;
-			png_rows[y][x * 4 + 1] = g;
-			png_rows[y][x * 4 + 2] = b;
-			png_rows[y][x * 4 + 3] = a;
-		    }
-		}
-
-		png_write_image(png_ptr, png_rows);
-
-		for (y = 0; y < surf->h; y++)
-		    free(png_rows[y]);
-
-		free(png_rows);
-
-
-		png_write_end(png_ptr, NULL);
-
-		png_destroy_write_struct(&png_ptr, &info_ptr);
-		fclose(fi);
-
-		return 1;
-	    }
-	}
+    if (png_ptr == NULL) {
+        fclose(fi);
+        fprintf(stderr, "\nError: Couldn't create PNG write struct!\n%s\n\n", fname);
+        return 0;
     }
 
-    return 0;
+    info_ptr = png_create_info_struct(png_ptr);
+    if (info_ptr == NULL) {
+        fclose(fi);
+        png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
+        fprintf(stderr, "\nError: Couldn't create PNG info struct!\n%s\n\n", fname);
+        return 0;
+    }
+
+    if (setjmp(png_jmpbuf(png_ptr))) {
+        fclose(fi);
+        png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
+        fprintf(stderr, "\nError: PNG write error!\n%s\n\n", fname);
+        return 0;
+    }
+
+    png_init_io(png_ptr, fi);
+    png_set_IHDR(png_ptr, info_ptr, surf->w, surf->h, 8,
+                 PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
+                 PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+
+    png_set_sRGB_gAMA_and_cHRM(png_ptr, info_ptr,
+                               PNG_sRGB_INTENT_PERCEPTUAL);
+
+    /* Set headers */
+    count = 0;
+    text_ptr[count].key = (png_charp) "Software";
+    text_ptr[count].text = (png_charp) PACKAGE_STRING;
+    text_ptr[count].compression = PNG_TEXT_COMPRESSION_NONE;
+    count++;
+
+    png_set_text(png_ptr, info_ptr, text_ptr, count);
+    png_write_info(png_ptr, info_ptr);
+
+    /* Save the picture: */
+    png_rows = malloc(sizeof(char *) * surf->h);
+    if (!png_rows) {
+        fclose(fi);
+        png_destroy_write_struct(&png_ptr, &info_ptr);
+        fprintf(stderr, "\nError: Memory allocation failed!\n%s\n\n", fname);
+        return 0;
+    }
+
+    SDL_LockSurface(surf);
+    
+    for (y = 0; y < surf->h; y++) {
+        png_rows[y] = malloc(sizeof(char) * 4 * surf->w);
+        if (!png_rows[y]) {
+            fclose(fi);
+            png_destroy_write_struct(&png_ptr, &info_ptr);
+            for (int i = 0; i < y; i++) {
+                free(png_rows[i]);
+            }
+            free(png_rows);
+            SDL_UnlockSurface(surf);
+            fprintf(stderr, "\nError: Memory allocation failed!\n%s\n\n", fname);
+            return 0;
+        }
+
+        for (x = 0; x < surf->w; x++) {
+            Uint32 pixel = get_pixel(surf, x, y);
+            SDL_GetRGBA(pixel, format_details, palette, &r, &g, &b, &a);
+            png_rows[y][x * 4 + 0] = r;
+            png_rows[y][x * 4 + 1] = g;
+            png_rows[y][x * 4 + 2] = b;
+            png_rows[y][x * 4 + 3] = a;
+        }
+    }
+
+    SDL_UnlockSurface(surf);
+    
+    png_write_image(png_ptr, png_rows);
+
+    for (y = 0; y < surf->h; y++) {
+        free(png_rows[y]);
+    }
+    free(png_rows);
+
+    png_write_end(png_ptr, NULL);
+    png_destroy_write_struct(&png_ptr, &info_ptr);
+    fclose(fi);
+
+    return 1;
 }
 #else
 void savePNG(SDL_Surface* surf, char* fn)
@@ -1201,7 +1436,7 @@ Mix_Music* T4K_LoadMusic(char *datafile )
     if (!tempMusic)
     {
 	fprintf(stderr, "T4K_LoadMusic(): %s not loaded successfully\n", fn);
-	printf("Error was: %s\n\n", Mix_GetError());
+	printf("Error was: %s\n\n", SDL_GetError());
     }
     return tempMusic;
 }

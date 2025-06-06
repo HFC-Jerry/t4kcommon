@@ -58,9 +58,9 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <wchar.h>
-#include "SDL.h"
-#include "SDL_image.h"
-#include "SDL_mixer.h"
+#include "SDL3/SDL.h"
+#include "SDL3_image/SDL_image.h"
+#include "SDL3_mixer/SDL_mixer.h"
 
 //TTS Macros
 #define DEFAULT_VALUE 30
@@ -951,7 +951,7 @@ void T4K_OnResolutionSwitch( ResSwitchCallback callback );
 //! \return 
 //!     The event type received.
 //!
-SDL_EventType T4K_WaitForEvent( SDL_EventMask events );
+SDL_EventType T4K_WaitForEvent( SDL_Event events );
 
 //==============================================================================
 //
