@@ -41,10 +41,7 @@ static Uint32 get_pixel(SDL_Surface* surf, int x, int y);
 #include <stdbool.h>
 #ifdef HAVE_RSVG
 #include<librsvg/rsvg.h>
-<<<<<<< Updated upstream
 //## #include<librsvg/rsvg-cairo.h>
-=======
->>>>>>> Stashed changes
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <math.h>
@@ -158,11 +155,7 @@ void T4K_AddDataPrefix(const char* path)
 
 /* Look for a file as an absolute path, then in
    potential install directories */
-<<<<<<< Updated upstream
 /*##const char* find_file(const char* base_name)
-=======
-/*st char* find_file(const char* base_name)
->>>>>>> Stashed changes
 {
     static char tmp_path[T4K_PATH_MAX];
     if (T4K_CheckFile(base_name))
@@ -175,6 +168,7 @@ void T4K_AddDataPrefix(const char* path)
 	return tmp_path;
     return "";	
 }		*/
+
 
 const char* find_file(const char* base_name)
 {
@@ -216,38 +210,7 @@ const char* find_file(const char* base_name)
     }
 
     return "";
-}*/
-
-const char* find_file(const char* base_name)
-{
-    static char tmp_path[T4K_PATH_MAX] = {0};
-
-    if (T4K_CheckFile(base_name)) {
-        return base_name;
-    }
-
-    int ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s", app_prefix_path[0], base_name);
-    if (ret >= 0 && ret < (int)sizeof(tmp_path)) {
-        if (T4K_CheckFile(tmp_path)) {
-            return tmp_path;
-        }
-    } else {
-        fprintf(stderr, "Warning: path truncated (app_prefix_path)\n");
-    }
-
-    ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s", COMMON_DATA_PREFIX, base_name);
-    if (ret >= 0 && ret < (int)sizeof(tmp_path)) {
-        if (T4K_CheckFile(tmp_path)) {
-            return tmp_path;
-        }
-    } else {
-        fprintf(stderr, "Warning: path truncated (COMMON_DATA_PREFIX)\n");
-    }
-
-    return "";
 }
-
-
 
 
 #ifdef HAVE_RSVG
@@ -355,24 +318,13 @@ SDL_Surface* load_svg(const char* file_name, int width, int height, const char* 
     file_handle = rsvg_handle_new_from_file(file_name, NULL);
     if(NULL == file_handle)
     {
-<<<<<<< Updated upstream
         DEBUGMSG(debug_loaders, "load_svg(): file %s not found\n", file_name);
         return NULL;
-=======
-	DEBUGMSG(debug_loaders, "load_svg(): file %s not found\n", file_name);
-
-	return NULL;
->>>>>>> Stashed changes
     }
 
     dest = render_svg_from_handle(file_handle, width, height, layer_name);
 
     g_object_unref(file_handle);
-<<<<<<< Updated upstream
-=======
-
-
->>>>>>> Stashed changes
     return dest;
 }
 sprite* load_svg_sprite(const char* file_name, int width, int height)
@@ -384,20 +336,13 @@ sprite* load_svg_sprite(const char* file_name, int width, int height)
 
     DEBUGMSG(debug_loaders, "load_svg_sprite(): loading sprite from %s, width = %d, height = %d\n", file_name, width, height);
 
-<<<<<<< Updated upstream
 //##   rsvg_init();
-=======
->>>>>>> Stashed changes
 
     file_handle = rsvg_handle_new_from_file(file_name, NULL);
     if(NULL == file_handle)
     {
 	DEBUGMSG(debug_loaders, "load_svg_sprite(): file %s not found\n", file_name);
-<<<<<<< Updated upstream
 //##	rsvg_term();
-=======
-
->>>>>>> Stashed changes
 	return NULL;
     }
 
@@ -405,11 +350,7 @@ sprite* load_svg_sprite(const char* file_name, int width, int height)
     if (new_sprite == NULL)
     {
         DEBUGMSG(debug_loaders, "malloc(): can't allocate memory for a new sprite\n");
-<<<<<<< Updated upstream
 //##        rsvg_term();
-=======
-    
->>>>>>> Stashed changes
         return NULL;
     }
     new_sprite->default_img = render_svg_from_handle(file_handle, width, height, "#default");
@@ -431,11 +372,7 @@ sprite* load_svg_sprite(const char* file_name, int width, int height)
 	}
 
     g_object_unref(file_handle);
-<<<<<<< Updated upstream
 //##    rsvg_term();
-=======
-
->>>>>>> Stashed changes
 
     return new_sprite;
 }
@@ -449,7 +386,6 @@ SDL_Surface* render_svg_from_handle(RsvgHandle* file_handle, int width, int heig
     cairo_t* context;
     SDL_Surface* dest;
     float scale_x, scale_y;
-<<<<<<< Updated upstream
     //##Uint32 Rmask, Gmask, Bmask, Amask;
     //##rsvg_handle_get_dimensions(file_handle, &dimensions);
 	double intrinsic_width, intrinsic_height;
@@ -459,14 +395,6 @@ SDL_Surface* render_svg_from_handle(RsvgHandle* file_handle, int width, int heig
     }
     /* set scale_x and scale_y */
   if(width < 0 || height < 0)
-=======
-	Uint32 Rmask = 0, Gmask = 0, Bmask = 0, Amask = 0;
-	SDL_PixelFormatDetails fmt_details; 
-
-/*	RsvgDimensionData dimensions;
-    rsvg_handle_get_dimensions(file_handle, &dimensions);
-    if(width < 0 || height < 0)
->>>>>>> Stashed changes
     {
         width = (int)intrinsic_width;
         height = (int)intrinsic_height;
@@ -478,46 +406,12 @@ SDL_Surface* render_svg_from_handle(RsvgHandle* file_handle, int width, int heig
         scale_x = (float)width / intrinsic_width;
         scale_y = (float)height / intrinsic_height;
     }
-<<<<<<< Updated upstream
     /*## set color masks 
     Rmask = T4K_GetScreen()->format->Rmask;
     Gmask = T4K_GetScreen()->format->Gmask;
     Bmask = T4K_GetScreen()->format->Bmask;
     if(T4K_GetScreen()->format->Amask == 0)
 	 find a free byte to use for Amask 
-=======
-*/
-
-	gdouble svg_width, svg_height;
-
-	if (!rsvg_handle_get_intrinsic_size_in_pixels(file_handle, &svg_width, &svg_height)) {
-		fprintf(stderr, "SVG has no intrinsic size!\n");
-		svg_width = 100.0;
-		svg_height = 100.0;
-	}
-
-	// Decide final rendering size
-	if (width < 0 || height < 0) {
-		width = (int)ceil(svg_width);
-		height = (int)ceil(svg_height);
-	}
-
-	// Now use viewport for scaling
-	RsvgRectangle viewport = {
-		.x = 0.0,
-		.y = 0.0,
-		.width = width,
-		.height = height
-	};
-
-
-
-    /* set color masks */
-/*    Rmask = T4K_GetScreen()->format->Rmask;
-    Gmask = T4K_GetScreen()->format->Gmask;
-    Bmask = T4K_GetScreen()->format->Bmask;
-    if(T4K_GetScreen()->format->Amask == 0)
->>>>>>> Stashed changes
 	Amask = ~(Rmask | Gmask | Bmask);
     else
 	Amask = T4K_GetScreen()->format->Amask;
@@ -525,16 +419,12 @@ SDL_Surface* render_svg_from_handle(RsvgHandle* file_handle, int width, int heig
     DEBUGMSG(debug_loaders, "render_svg_from_handle(): color masks: R=%u, G=%u, B=%u, A=%u\n",
 	    Rmask, Gmask, Bmask, Amask);
 */
-<<<<<<< Updated upstream
 dest = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_ARGB8888);
     if (!dest)
     {
         DEBUGMSG(debug_loaders, "render_svg_from_handle(): SDL_CreateSurface failed: %s\n", SDL_GetError());
         return NULL;
     }
-=======
-
->>>>>>> Stashed changes
 
 	SDL_Surface *surface = T4K_GetScreen();
 	SDL_PixelFormat format_enum = surface->format;
@@ -571,7 +461,6 @@ dest = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_ARGB8888);
     }
 
     cairo_scale(context, scale_x, scale_y);
-<<<<<<< Updated upstream
     if (!rsvg_handle_render_layer(file_handle, context, layer_name, NULL, NULL)) {
         DEBUGMSG(debug_loaders, "render_svg_from_handle(): rsvg_handle_render_layer failed\n");
         SDL_DestroySurface(dest);
@@ -579,15 +468,6 @@ dest = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_ARGB8888);
         cairo_destroy(context);
         return NULL;
     }
-=======
-
-    /* render appropriate layer */
-//    rsvg_handle_render_cairo_sub(file_handle, context, layer_name);
-
-	if (!rsvg_handle_render_layer(file_handle, context, layer_name, &viewport, NULL)) {
-		fprintf(stderr, "Failed to render layer '%s'\n", layer_name);
-	}
->>>>>>> Stashed changes
     SDL_UnlockSurface(dest);
     cairo_surface_destroy(temp_surf);
     cairo_destroy(context);
@@ -611,28 +491,17 @@ void get_svg_dimensions(const char* file_name, int* width, int* height)
     }
 
     //FIXME do we really need to initialize and terminate RSVG every time?
-<<<<<<< Updated upstream
 //##    rsvg_init();
-=======
->>>>>>> Stashed changes
 
     file_handle = rsvg_handle_new_from_file(file_name, NULL);
     if(file_handle == NULL)
     {
 	DEBUGMSG(debug_loaders, "get_svg_dimensions(): file %s not found\n", file_name);
-<<<<<<< Updated upstream
 //##	rsvg_term();
 	return;
     }
 
 /*##    rsvg_handle_get_dimensions(file_handle, &dimensions);
-=======
-
-	return;
-    }
-
-/*  rsvg_handle_get_dimensions(file_handle, &dimensions);
->>>>>>> Stashed changes
 
     *width = dimensions.width;
     *height = dimensions.height;	*/
@@ -644,12 +513,8 @@ if (!rsvg_handle_get_intrinsic_size_in_pixels(file_handle, &intrinsic_width, &in
 	*width = (int)intrinsic_width;
     *height = (int)intrinsic_height;
     g_object_unref(file_handle);
-*/
     //FIXME see above
-<<<<<<< Updated upstream
 //##    rsvg_term();
-=======
->>>>>>> Stashed changes
 
 	gdouble svg_width, svg_height;
 	if (!rsvg_handle_get_intrinsic_size_in_pixels(file_handle, &svg_width, &svg_height)) {
@@ -891,12 +756,8 @@ void fit_in_rectangle(int* width, int* height, int max_width, int max_height)
 	*height *= min(scale_w, scale_h);
     }
 }
-<<<<<<< Updated upstream
 /*##
 SDL_Surface* set_format(SDL_Surface* img, int mode)
-=======
-/*SDL_Surface* set_format(SDL_Surface* img, int mode)
->>>>>>> Stashed changes
 {
     switch (mode & IMG_MODES)
     {

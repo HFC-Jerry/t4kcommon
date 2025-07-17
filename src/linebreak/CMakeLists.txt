@@ -105,8 +105,4 @@ install(TARGETS linebreak
 
 install(FILES ${LINEBREAK_HEADERS}
     DESTINATION include/linebreak
-<<<<<<< Updated upstream
 )
-=======
-)
->>>>>>> Stashed changes
