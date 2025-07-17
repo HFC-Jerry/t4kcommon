@@ -152,4 +152,8 @@ endif()
 
 if(CURL_FOUND)
     target_link_libraries(${T4K_TESTAPP} PRIVATE ${CURL_LIBRARIES})
+<<<<<<< Updated upstream
 endif()
+=======
+endif()
+>>>>>>> Stashed changes

@@ -33,7 +33,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #include "t4k_globals.h"
 
 SDL_Surface* screen = NULL;
-
 static ResSwitchCallback res_switch_callback = NULL;
 static ResSwitchCallback internal_res_switch_callback = NULL;
 
@@ -63,12 +62,20 @@ const char* T4K_AskFontName()
    global. Not sure what is involved performance-wise in SDL_GetVideoSurface,
    or if this check is even necessary -Cheez
    */
-SDL_Surface* T4K_GetScreen()
+/*SDL_Surface* T4K_GetScreen()
 {
     if (screen != SDL_GetVideoSurface() )
     {
 	fprintf(stderr, "Video Surface changed from outside of SDL_Extras!\n");
 	screen = SDL_GetVideoSurface();
+    }
+    return screen;
+}*/
+SDL_Surface* T4K_GetScreen(void)
+{
+    if (!screen)
+    {
+        fprintf(stderr, "Warning: screen surface is NULL!\n");
     }
     return screen;
 }
@@ -127,7 +134,7 @@ SDL_Surface* T4K_CreateButton(int w, int h, int radius,
 {
     /* NOTE - we use a 32-bit temp surface even if we have a 16-bit */
     /* screen - it gets converted during blitting.                  */
-    SDL_Surface* tmp_surf = SDL_CreateRGBSurface(SDL_SWSURFACE|SDL_SRCALPHA,
+    SDL_Surface* tmp_surf = SDL_CreateSurface(SDL_SWSURFACE|SDL_SRCALPHA,
 	    w,
 	    h,
 	    32,

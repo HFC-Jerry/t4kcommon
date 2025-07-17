@@ -206,4 +206,8 @@ else()
     if(PANGO_FOUND)
         set(DEP_LIBS_PRIVATE "${DEP_LIBS_PRIVATE} ${PANGO_LIBRARIES}")
     endif()
+<<<<<<< Updated upstream
 endif()
+=======
+endif()
+>>>>>>> Stashed changes

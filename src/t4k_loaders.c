@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #include "t4k_compiler.h"
 #include "t4k_common.h"
 #include <errno.h>
-
+#define Mix_GetError SDL_GetError //Added in sdl3
 #ifdef HAVE_LIBPNG
 #include <dirent.h>
 #include <sys/stat.h>
@@ -38,12 +38,16 @@ static int do_png_save(FILE * fi, const char *const fname, SDL_Surface * surf);
 static void savePNG(SDL_Surface* surf,char* fn); //TODO this could be part of the API
 static Uint32 get_pixel(SDL_Surface* surf, int x, int y);
 #endif
-
+#include <stdbool.h>
 #ifdef HAVE_RSVG
 #include<librsvg/rsvg.h>
+<<<<<<< Updated upstream
 //## #include<librsvg/rsvg-cairo.h>
+=======
+>>>>>>> Stashed changes
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include <math.h>
 #endif
 
 #define SOUNDS_DIR "sounds"
@@ -154,7 +158,11 @@ void T4K_AddDataPrefix(const char* path)
 
 /* Look for a file as an absolute path, then in
    potential install directories */
+<<<<<<< Updated upstream
 /*##const char* find_file(const char* base_name)
+=======
+/*st char* find_file(const char* base_name)
+>>>>>>> Stashed changes
 {
     static char tmp_path[T4K_PATH_MAX];
     if (T4K_CheckFile(base_name))
@@ -208,7 +216,40 @@ const char* find_file(const char* base_name)
     }
 
     return "";
+}*/
+
+const char* find_file(const char* base_name)
+{
+    static char tmp_path[T4K_PATH_MAX] = {0};
+
+    if (T4K_CheckFile(base_name)) {
+        return base_name;
+    }
+
+    int ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s", app_prefix_path[0], base_name);
+    if (ret >= 0 && ret < (int)sizeof(tmp_path)) {
+        if (T4K_CheckFile(tmp_path)) {
+            return tmp_path;
+        }
+    } else {
+        fprintf(stderr, "Warning: path truncated (app_prefix_path)\n");
+    }
+
+    ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s", COMMON_DATA_PREFIX, base_name);
+    if (ret >= 0 && ret < (int)sizeof(tmp_path)) {
+        if (T4K_CheckFile(tmp_path)) {
+            return tmp_path;
+        }
+    } else {
+        fprintf(stderr, "Warning: path truncated (COMMON_DATA_PREFIX)\n");
+    }
+
+    return "";
 }
+
+
+
+
 #ifdef HAVE_RSVG
 
 int get_number_of_frames_from_svg(const char* file_name) {
@@ -314,13 +355,24 @@ SDL_Surface* load_svg(const char* file_name, int width, int height, const char* 
     file_handle = rsvg_handle_new_from_file(file_name, NULL);
     if(NULL == file_handle)
     {
+<<<<<<< Updated upstream
         DEBUGMSG(debug_loaders, "load_svg(): file %s not found\n", file_name);
         return NULL;
+=======
+	DEBUGMSG(debug_loaders, "load_svg(): file %s not found\n", file_name);
+
+	return NULL;
+>>>>>>> Stashed changes
     }
 
     dest = render_svg_from_handle(file_handle, width, height, layer_name);
 
     g_object_unref(file_handle);
+<<<<<<< Updated upstream
+=======
+
+
+>>>>>>> Stashed changes
     return dest;
 }
 sprite* load_svg_sprite(const char* file_name, int width, int height)
@@ -332,13 +384,20 @@ sprite* load_svg_sprite(const char* file_name, int width, int height)
 
     DEBUGMSG(debug_loaders, "load_svg_sprite(): loading sprite from %s, width = %d, height = %d\n", file_name, width, height);
 
+<<<<<<< Updated upstream
 //##   rsvg_init();
+=======
+>>>>>>> Stashed changes
 
     file_handle = rsvg_handle_new_from_file(file_name, NULL);
     if(NULL == file_handle)
     {
 	DEBUGMSG(debug_loaders, "load_svg_sprite(): file %s not found\n", file_name);
+<<<<<<< Updated upstream
 //##	rsvg_term();
+=======
+
+>>>>>>> Stashed changes
 	return NULL;
     }
 
@@ -346,7 +405,11 @@ sprite* load_svg_sprite(const char* file_name, int width, int height)
     if (new_sprite == NULL)
     {
         DEBUGMSG(debug_loaders, "malloc(): can't allocate memory for a new sprite\n");
+<<<<<<< Updated upstream
 //##        rsvg_term();
+=======
+    
+>>>>>>> Stashed changes
         return NULL;
     }
     new_sprite->default_img = render_svg_from_handle(file_handle, width, height, "#default");
@@ -368,7 +431,11 @@ sprite* load_svg_sprite(const char* file_name, int width, int height)
 	}
 
     g_object_unref(file_handle);
+<<<<<<< Updated upstream
 //##    rsvg_term();
+=======
+
+>>>>>>> Stashed changes
 
     return new_sprite;
 }
@@ -377,11 +444,12 @@ sprite* load_svg_sprite(const char* file_name, int width, int height)
    If width or height is negative no resizing is applied. */
 SDL_Surface* render_svg_from_handle(RsvgHandle* file_handle, int width, int height, const char* layer_name)
 {
-    RsvgDimensionData dimensions;
+    
     cairo_surface_t* temp_surf;
     cairo_t* context;
     SDL_Surface* dest;
     float scale_x, scale_y;
+<<<<<<< Updated upstream
     //##Uint32 Rmask, Gmask, Bmask, Amask;
     //##rsvg_handle_get_dimensions(file_handle, &dimensions);
 	double intrinsic_width, intrinsic_height;
@@ -391,6 +459,14 @@ SDL_Surface* render_svg_from_handle(RsvgHandle* file_handle, int width, int heig
     }
     /* set scale_x and scale_y */
   if(width < 0 || height < 0)
+=======
+	Uint32 Rmask = 0, Gmask = 0, Bmask = 0, Amask = 0;
+	SDL_PixelFormatDetails fmt_details; 
+
+/*	RsvgDimensionData dimensions;
+    rsvg_handle_get_dimensions(file_handle, &dimensions);
+    if(width < 0 || height < 0)
+>>>>>>> Stashed changes
     {
         width = (int)intrinsic_width;
         height = (int)intrinsic_height;
@@ -402,12 +478,46 @@ SDL_Surface* render_svg_from_handle(RsvgHandle* file_handle, int width, int heig
         scale_x = (float)width / intrinsic_width;
         scale_y = (float)height / intrinsic_height;
     }
+<<<<<<< Updated upstream
     /*## set color masks 
     Rmask = T4K_GetScreen()->format->Rmask;
     Gmask = T4K_GetScreen()->format->Gmask;
     Bmask = T4K_GetScreen()->format->Bmask;
     if(T4K_GetScreen()->format->Amask == 0)
 	 find a free byte to use for Amask 
+=======
+*/
+
+	gdouble svg_width, svg_height;
+
+	if (!rsvg_handle_get_intrinsic_size_in_pixels(file_handle, &svg_width, &svg_height)) {
+		fprintf(stderr, "SVG has no intrinsic size!\n");
+		svg_width = 100.0;
+		svg_height = 100.0;
+	}
+
+	// Decide final rendering size
+	if (width < 0 || height < 0) {
+		width = (int)ceil(svg_width);
+		height = (int)ceil(svg_height);
+	}
+
+	// Now use viewport for scaling
+	RsvgRectangle viewport = {
+		.x = 0.0,
+		.y = 0.0,
+		.width = width,
+		.height = height
+	};
+
+
+
+    /* set color masks */
+/*    Rmask = T4K_GetScreen()->format->Rmask;
+    Gmask = T4K_GetScreen()->format->Gmask;
+    Bmask = T4K_GetScreen()->format->Bmask;
+    if(T4K_GetScreen()->format->Amask == 0)
+>>>>>>> Stashed changes
 	Amask = ~(Rmask | Gmask | Bmask);
     else
 	Amask = T4K_GetScreen()->format->Amask;
@@ -415,13 +525,38 @@ SDL_Surface* render_svg_from_handle(RsvgHandle* file_handle, int width, int heig
     DEBUGMSG(debug_loaders, "render_svg_from_handle(): color masks: R=%u, G=%u, B=%u, A=%u\n",
 	    Rmask, Gmask, Bmask, Amask);
 */
+<<<<<<< Updated upstream
 dest = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_ARGB8888);
     if (!dest)
     {
         DEBUGMSG(debug_loaders, "render_svg_from_handle(): SDL_CreateSurface failed: %s\n", SDL_GetError());
         return NULL;
     }
+=======
 
+>>>>>>> Stashed changes
+
+	SDL_Surface *surface = T4K_GetScreen();
+	SDL_PixelFormat format_enum = surface->format;
+	const SDL_PixelFormatDetails *details = SDL_GetPixelFormatDetails(surface->format);
+
+	if (details) {
+		Uint32 Rmask = details->Rmask;
+		Uint32 Gmask = details->Gmask;
+		Uint32 Bmask = details->Bmask;
+		Uint32 Amask = details->Amask;
+
+		DEBUGMSG(debug_loaders,
+			"render_svg_from_handle(): color masks: R=%u, G=%u, B=%u, A=%u\n",
+			Rmask, Gmask, Bmask, Amask);
+	} else {
+		fprintf(stderr, "Failed to get pixel format details: %s\n", SDL_GetError());
+	}
+
+	dest = SDL_CreateSurface(width, height, format_enum);
+	if (!dest) {
+		fprintf(stderr, "Failed to create surface: %s\n", SDL_GetError());
+	}
     SDL_LockSurface(dest);
     temp_surf = cairo_image_surface_create_for_data(dest->pixels,
             CAIRO_FORMAT_ARGB32, dest->w, dest->h, dest->pitch);
@@ -436,6 +571,7 @@ dest = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_ARGB8888);
     }
 
     cairo_scale(context, scale_x, scale_y);
+<<<<<<< Updated upstream
     if (!rsvg_handle_render_layer(file_handle, context, layer_name, NULL, NULL)) {
         DEBUGMSG(debug_loaders, "render_svg_from_handle(): rsvg_handle_render_layer failed\n");
         SDL_DestroySurface(dest);
@@ -443,6 +579,15 @@ dest = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_ARGB8888);
         cairo_destroy(context);
         return NULL;
     }
+=======
+
+    /* render appropriate layer */
+//    rsvg_handle_render_cairo_sub(file_handle, context, layer_name);
+
+	if (!rsvg_handle_render_layer(file_handle, context, layer_name, &viewport, NULL)) {
+		fprintf(stderr, "Failed to render layer '%s'\n", layer_name);
+	}
+>>>>>>> Stashed changes
     SDL_UnlockSurface(dest);
     cairo_surface_destroy(temp_surf);
     cairo_destroy(context);
@@ -466,17 +611,28 @@ void get_svg_dimensions(const char* file_name, int* width, int* height)
     }
 
     //FIXME do we really need to initialize and terminate RSVG every time?
+<<<<<<< Updated upstream
 //##    rsvg_init();
+=======
+>>>>>>> Stashed changes
 
     file_handle = rsvg_handle_new_from_file(file_name, NULL);
     if(file_handle == NULL)
     {
 	DEBUGMSG(debug_loaders, "get_svg_dimensions(): file %s not found\n", file_name);
+<<<<<<< Updated upstream
 //##	rsvg_term();
 	return;
     }
 
 /*##    rsvg_handle_get_dimensions(file_handle, &dimensions);
+=======
+
+	return;
+    }
+
+/*  rsvg_handle_get_dimensions(file_handle, &dimensions);
+>>>>>>> Stashed changes
 
     *width = dimensions.width;
     *height = dimensions.height;	*/
@@ -488,10 +644,24 @@ if (!rsvg_handle_get_intrinsic_size_in_pixels(file_handle, &intrinsic_width, &in
 	*width = (int)intrinsic_width;
     *height = (int)intrinsic_height;
     g_object_unref(file_handle);
-
+*/
     //FIXME see above
+<<<<<<< Updated upstream
 //##    rsvg_term();
+=======
+>>>>>>> Stashed changes
 
+	gdouble svg_width, svg_height;
+	if (!rsvg_handle_get_intrinsic_size_in_pixels(file_handle, &svg_width, &svg_height)) {
+		fprintf(stderr, "Warning: SVG has no intrinsic size. Using fallback.\n");
+		svg_width = 100.0;
+		svg_height = 100.0;
+	}
+
+	*width = (int)ceil(svg_width);
+	*height = (int)ceil(svg_height);
+
+	g_object_unref(file_handle);
     saveSVGInfo(file_name, *width, *height); //save dimensions for quick access
 }
 
@@ -721,8 +891,12 @@ void fit_in_rectangle(int* width, int* height, int max_width, int max_height)
 	*height *= min(scale_w, scale_h);
     }
 }
+<<<<<<< Updated upstream
 /*##
 SDL_Surface* set_format(SDL_Surface* img, int mode)
+=======
+/*SDL_Surface* set_format(SDL_Surface* img, int mode)
+>>>>>>> Stashed changes
 {
     switch (mode & IMG_MODES)
     {
@@ -756,6 +930,7 @@ SDL_Surface* set_format(SDL_Surface* img, int mode)
     return NULL;
 }
 */
+<<<<<<< Updated upstream
 SDL_Surface* set_format(SDL_Surface* img, int mode)
 {
     if (!img) {
@@ -770,6 +945,51 @@ SDL_Surface* set_format(SDL_Surface* img, int mode)
         DEBUGMSG(debug_loaders, "set_format(): Could not get screen surface\n");
         return NULL;
     }
+=======
+
+SDL_Surface* set_format(SDL_Surface* img, int mode)
+{
+    SDL_Surface* optimized = NULL;
+    Uint32 target_format = SDL_PIXELFORMAT_RGBA32; // Default with alpha support
+
+    switch (mode & IMG_MODES)
+    {
+        case IMG_REGULAR:
+            DEBUGMSG(debug_loaders, "set_format(): handling IMG_REGULAR mode.\n");
+            target_format = SDL_PIXELFORMAT_RGB24;
+            break;
+
+        case IMG_ALPHA:
+            DEBUGMSG(debug_loaders, "set_format(): handling IMG_ALPHA mode.\n");
+            target_format = SDL_PIXELFORMAT_RGBA32;
+            break;
+
+        case IMG_COLORKEY:
+            DEBUGMSG(debug_loaders, "set_format(): handling IMG_COLORKEY mode.\n");
+            {
+                Uint32 colorkey = SDL_MapRGB(SDL_GetPixelFormatDetails(img->format), NULL, 255, 255, 0);
+                if (SDL_SetColorKey(img, true, colorkey) != 0)
+                {
+                    fprintf(stderr, "Failed to set color key: %s\n", SDL_GetError());
+                }
+            }
+            target_format = SDL_PIXELFORMAT_RGBA32;
+            break;
+
+        default:
+            DEBUGMSG(debug_loaders, "set_format(): Image mode not recognized\n");
+            return NULL;
+    }
+
+    optimized = SDL_ConvertSurface(img, target_format);
+    if (!optimized)
+    {
+        fprintf(stderr, "Surface format conversion failed: %s\n", SDL_GetError());
+    }
+
+    return optimized;
+}
+>>>>>>> Stashed changes
 
     switch (mode & IMG_MODES) {
         case IMG_REGULAR:
@@ -844,10 +1064,20 @@ SDL_Surface* T4K_LoadBkgd(const char* file_name, int width, int height)
     }
 
     /* turn off transparency, since it's the background */
+<<<<<<< Updated upstream
 //##    SDL_SetAlpha(orig, SDL_RLEACCEL, SDL_ALPHA_OPAQUE);
 //##    final_pic = SDL_DisplayFormat(orig); 
 	final_pic = SDL_ConvertSurface(orig, T4K_GetScreen()->format);/* optimize the format */
     SDL_DestroySurface(orig);
+=======
+    SDL_SetSurfaceAlphaMod(orig, SDL_ALPHA_OPAQUE);
+//    final_pic = SDL_DisplayFormat(orig); /* optimize the format */
+	final_pic = SDL_ConvertSurface(orig, SDL_PIXELFORMAT_XRGB8888);
+	if (!final_pic) {
+		fprintf(stderr, "Surface conversion failed: %s\n", SDL_GetError());
+	}    
+	SDL_FreeSurface(orig);
+>>>>>>> Stashed changes
 
     return final_pic;
 }
@@ -917,12 +1147,42 @@ sprite* load_sprite(const char* name, int mode, int w, int h, bool proportional)
             height = h;
         }
 
+<<<<<<< Updated upstream
         // Check default image path length
         int len = snprintf(NULL, 0, "%s/images/%sd-%d-%d.png", cachepath, name, width, height);
         if (len < 0 || len >= T4K_PATH_MAX) {
             DEBUGMSG(debug_loaders, "load_sprite(): PNG path too long for %s default image\n", name);
         } 
 		else 
+=======
+	//see if a cached PNG exists
+//	sprintf(pngfn, "%s/" IMAGE_DIR "/%sd-%d-%d.png", cachepath, name, width, height);
+	int ret = snprintf(pngfn, sizeof(pngfn), "%s/" IMAGE_DIR "/%sd-%d-%d.png",
+					cachepath, name, width, height);
+
+	if (ret < 0 || ret >= (int)sizeof(pngfn)) {
+		fprintf(stderr, "Error: pngfn path truncated: '%s/" IMAGE_DIR "/%s...'\n", cachepath, name);
+		return NULL; // or appropriate error handling
+	}
+
+	if(T4K_CheckFile(pngfn)==1)
+	{
+	    new_sprite=(sprite*)malloc(sizeof(sprite));
+	    new_sprite->default_img=IMG_Load(pngfn);
+	    i=0;
+	    while(1)
+	    {
+//		sprintf(pngfn, "%s/" IMAGE_DIR "/%s%d-%d-%d.png", cachepath, name, i, width, height);
+		int ret = snprintf(pngfn, sizeof(pngfn), "%s/" IMAGE_DIR "/%s%d-%d-%d.png",
+                   cachepath, name, i, width, height);
+		if (ret < 0 || ret >= (int)sizeof(pngfn)) {
+			fprintf(stderr, "Error: pngfn path truncated: '%s/" IMAGE_DIR "/%s%d-%d-%d.png'\n",
+					cachepath, name, i, width, height);
+			return NULL;  // Or handle error as appropriate
+		}
+
+		if(T4K_CheckFile(pngfn)==1)
+>>>>>>> Stashed changes
 		{
             if (snprintf(pngfn, T4K_PATH_MAX, "%s/images/%sd-%d-%d.png", cachepath, name, width, height) >= T4K_PATH_MAX) {
                 DEBUGMSG(debug_loaders, "load_sprite(): Path too long for default image\n");
@@ -979,6 +1239,7 @@ sprite* load_sprite(const char* name, int mode, int w, int h, bool proportional)
             width = new_sprite->default_img->w;
             height = new_sprite->default_img->h;
 
+<<<<<<< Updated upstream
             if (shouldcache)
             {
                 len = snprintf(NULL, 0, "%s/images/%sd-%d-%d.png", cachepath, name, width, height);
@@ -1006,6 +1267,39 @@ sprite* load_sprite(const char* name, int mode, int w, int h, bool proportional)
                 }
             }
         }
+=======
+	    if (shouldcache)
+	    {
+		/* cache loaded sprites in PNG files */
+//		sprintf(pngfn, "%s/" IMAGE_DIR "/%sd-%d-%d.png", cachepath, name, width, height);
+		int ret = snprintf(pngfn, sizeof(pngfn), "%s/" IMAGE_DIR "/%sd-%d-%d.png",
+						cachepath, name, width, height);
+
+		if (ret < 0 || ret >= (int)sizeof(pngfn)) {
+			fprintf(stderr, "Error: pngfn path truncated: '%s/" IMAGE_DIR "/%s...'\n", cachepath, name);
+			return NULL; // or appropriate error handling
+		}
+
+		if(T4K_CheckFile(pngfn)!=1)
+		    savePNG(new_sprite->default_img,pngfn);
+		for(i=0; i<new_sprite->num_frames; i++)
+		{
+//		    sprintf(pngfn, "%s/" IMAGE_DIR "/%s%d-%d-%d.png", cachepath, name, i, width, height);
+			int ret = snprintf(pngfn, sizeof(pngfn), "%s/" IMAGE_DIR "/%s%d-%d-%d.png",
+							cachepath, name, i, width, height);
+
+			if (ret < 0 || ret >= (int)sizeof(pngfn)) {
+				fprintf(stderr, "Error: pngfn path truncated: '%s/" IMAGE_DIR "/%s%d-%d-%d.png'\n",
+						cachepath, name, i, width, height);
+				return NULL;  // Or handle error as appropriate
+			}
+
+		    if(T4K_CheckFile(pngfn)!=1)
+			savePNG(new_sprite->frame[i],pngfn);
+		}
+	    }
+	}
+>>>>>>> Stashed changes
     }
 #endif
 
@@ -1291,6 +1585,7 @@ static int do_png_save(FILE * fi, const char *const fname, SDL_Surface * surf)
     unsigned char **png_rows;
     Uint8 r, g, b, a;
     int x, y, count;
+<<<<<<< Updated upstream
 
     /* Get pixel format details and palette */
     const SDL_PixelFormatDetails* format_details = SDL_GetPixelFormatDetails(surf->format);
@@ -1306,6 +1601,114 @@ static int do_png_save(FILE * fi, const char *const fname, SDL_Surface * surf)
         fclose(fi);
         fprintf(stderr, "\nError: Couldn't create PNG write struct!\n%s\n\n", fname);
         return 0;
+=======
+ // Uint32(*getpixel) (SDL_Surface *, int, int) =getpixels[surf->format->BytesPerPixel];
+	const SDL_PixelFormatDetails* details = SDL_GetPixelFormatDetails(surf->format);
+	Uint32 (*getpixel)(SDL_Surface*, int, int) = getpixels[details->bytes_per_pixel];
+    png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (png_ptr == NULL)
+    {
+	fclose(fi);
+	png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
+
+	fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
+	return 0;
+    }
+    else
+    {
+	info_ptr = png_create_info_struct(png_ptr);
+	if (info_ptr == NULL)
+	{
+	    fclose(fi);
+	    png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
+
+	    fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
+	    //draw_tux_text(TUX_OOPS, strerror(errno), 0);
+	}
+	else
+	{
+	    if (setjmp(png_jmpbuf(png_ptr)))
+	    {
+		fclose(fi);
+		png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
+
+		fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
+		//draw_tux_text(TUX_OOPS, strerror(errno), 0);
+	    }
+	    else
+	    {
+		png_init_io(png_ptr, fi);
+
+	png_set_IHDR(png_ptr, info_ptr, surf->w, surf->h, 8,
+		PNG_COLOR_TYPE_RGB_ALPHA,  PNG_INTERLACE_NONE,
+                PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+
+
+		png_set_sRGB_gAMA_and_cHRM(png_ptr, info_ptr,
+			PNG_sRGB_INTENT_PERCEPTUAL);
+
+		/* Set headers */
+
+		count = 0;
+
+		/*
+		   if (title != NULL && strlen(title) > 0)
+		   {
+		   text_ptr[count].key = "Title";
+		   text_ptr[count].text = title;
+		   text_ptr[count].compression = PNG_TEXT_COMPRESSION_NONE;
+		   count++;
+		   }
+		   */
+
+		text_ptr[count].key = (png_charp) "Software";
+		text_ptr[count].text =
+		    (png_charp) PACKAGE_STRING /*VER_VERSION " (" VER_DATE ")"*/;
+		text_ptr[count].compression = PNG_TEXT_COMPRESSION_NONE;
+		count++;
+
+		png_set_text(png_ptr, info_ptr, text_ptr, count);
+
+		png_write_info(png_ptr, info_ptr);
+
+
+
+		/* Save the picture: */
+
+		png_rows = malloc(sizeof(char *) * surf->h);
+		const SDL_PixelFormatDetails *details = SDL_GetPixelFormatDetails(surf->format);
+		for (y = 0; y < surf->h; y++)
+		{
+		    png_rows[y] = malloc(sizeof(char) * 4 * surf->w);
+
+		    for (x = 0; x < surf->w; x++)
+		    {
+//			SDL_GetRGBA(getpixel(surf, x, y), surf->format, &r, &g, &b, &a);
+        	SDL_GetRGBA(getpixel(surf, x, y), details, NULL, &r, &g, &b, &a);
+			png_rows[y][x * 4 + 0] = r;
+			png_rows[y][x * 4 + 1] = g;
+			png_rows[y][x * 4 + 2] = b;
+			png_rows[y][x * 4 + 3] = a;
+		    }
+		}
+
+		png_write_image(png_ptr, png_rows);
+
+		for (y = 0; y < surf->h; y++)
+		    free(png_rows[y]);
+
+		free(png_rows);
+
+
+		png_write_end(png_ptr, NULL);
+
+		png_destroy_write_struct(&png_ptr, &info_ptr);
+		fclose(fi);
+
+		return 1;
+	    }
+	}
+>>>>>>> Stashed changes
     }
 
     info_ptr = png_create_info_struct(png_ptr);
