@@ -930,7 +930,6 @@ SDL_Surface* set_format(SDL_Surface* img, int mode)
     return NULL;
 }
 */
-<<<<<<< Updated upstream
 SDL_Surface* set_format(SDL_Surface* img, int mode)
 {
     if (!img) {
@@ -945,51 +944,6 @@ SDL_Surface* set_format(SDL_Surface* img, int mode)
         DEBUGMSG(debug_loaders, "set_format(): Could not get screen surface\n");
         return NULL;
     }
-=======
-
-SDL_Surface* set_format(SDL_Surface* img, int mode)
-{
-    SDL_Surface* optimized = NULL;
-    Uint32 target_format = SDL_PIXELFORMAT_RGBA32; // Default with alpha support
-
-    switch (mode & IMG_MODES)
-    {
-        case IMG_REGULAR:
-            DEBUGMSG(debug_loaders, "set_format(): handling IMG_REGULAR mode.\n");
-            target_format = SDL_PIXELFORMAT_RGB24;
-            break;
-
-        case IMG_ALPHA:
-            DEBUGMSG(debug_loaders, "set_format(): handling IMG_ALPHA mode.\n");
-            target_format = SDL_PIXELFORMAT_RGBA32;
-            break;
-
-        case IMG_COLORKEY:
-            DEBUGMSG(debug_loaders, "set_format(): handling IMG_COLORKEY mode.\n");
-            {
-                Uint32 colorkey = SDL_MapRGB(SDL_GetPixelFormatDetails(img->format), NULL, 255, 255, 0);
-                if (SDL_SetColorKey(img, true, colorkey) != 0)
-                {
-                    fprintf(stderr, "Failed to set color key: %s\n", SDL_GetError());
-                }
-            }
-            target_format = SDL_PIXELFORMAT_RGBA32;
-            break;
-
-        default:
-            DEBUGMSG(debug_loaders, "set_format(): Image mode not recognized\n");
-            return NULL;
-    }
-
-    optimized = SDL_ConvertSurface(img, target_format);
-    if (!optimized)
-    {
-        fprintf(stderr, "Surface format conversion failed: %s\n", SDL_GetError());
-    }
-
-    return optimized;
-}
->>>>>>> Stashed changes
 
     switch (mode & IMG_MODES) {
         case IMG_REGULAR:
@@ -1064,20 +1018,10 @@ SDL_Surface* T4K_LoadBkgd(const char* file_name, int width, int height)
     }
 
     /* turn off transparency, since it's the background */
-<<<<<<< Updated upstream
 //##    SDL_SetAlpha(orig, SDL_RLEACCEL, SDL_ALPHA_OPAQUE);
 //##    final_pic = SDL_DisplayFormat(orig); 
 	final_pic = SDL_ConvertSurface(orig, T4K_GetScreen()->format);/* optimize the format */
     SDL_DestroySurface(orig);
-=======
-    SDL_SetSurfaceAlphaMod(orig, SDL_ALPHA_OPAQUE);
-//    final_pic = SDL_DisplayFormat(orig); /* optimize the format */
-	final_pic = SDL_ConvertSurface(orig, SDL_PIXELFORMAT_XRGB8888);
-	if (!final_pic) {
-		fprintf(stderr, "Surface conversion failed: %s\n", SDL_GetError());
-	}    
-	SDL_FreeSurface(orig);
->>>>>>> Stashed changes
 
     return final_pic;
 }
@@ -1147,42 +1091,12 @@ sprite* load_sprite(const char* name, int mode, int w, int h, bool proportional)
             height = h;
         }
 
-<<<<<<< Updated upstream
         // Check default image path length
         int len = snprintf(NULL, 0, "%s/images/%sd-%d-%d.png", cachepath, name, width, height);
         if (len < 0 || len >= T4K_PATH_MAX) {
             DEBUGMSG(debug_loaders, "load_sprite(): PNG path too long for %s default image\n", name);
         } 
 		else 
-=======
-	//see if a cached PNG exists
-//	sprintf(pngfn, "%s/" IMAGE_DIR "/%sd-%d-%d.png", cachepath, name, width, height);
-	int ret = snprintf(pngfn, sizeof(pngfn), "%s/" IMAGE_DIR "/%sd-%d-%d.png",
-					cachepath, name, width, height);
-
-	if (ret < 0 || ret >= (int)sizeof(pngfn)) {
-		fprintf(stderr, "Error: pngfn path truncated: '%s/" IMAGE_DIR "/%s...'\n", cachepath, name);
-		return NULL; // or appropriate error handling
-	}
-
-	if(T4K_CheckFile(pngfn)==1)
-	{
-	    new_sprite=(sprite*)malloc(sizeof(sprite));
-	    new_sprite->default_img=IMG_Load(pngfn);
-	    i=0;
-	    while(1)
-	    {
-//		sprintf(pngfn, "%s/" IMAGE_DIR "/%s%d-%d-%d.png", cachepath, name, i, width, height);
-		int ret = snprintf(pngfn, sizeof(pngfn), "%s/" IMAGE_DIR "/%s%d-%d-%d.png",
-                   cachepath, name, i, width, height);
-		if (ret < 0 || ret >= (int)sizeof(pngfn)) {
-			fprintf(stderr, "Error: pngfn path truncated: '%s/" IMAGE_DIR "/%s%d-%d-%d.png'\n",
-					cachepath, name, i, width, height);
-			return NULL;  // Or handle error as appropriate
-		}
-
-		if(T4K_CheckFile(pngfn)==1)
->>>>>>> Stashed changes
 		{
             if (snprintf(pngfn, T4K_PATH_MAX, "%s/images/%sd-%d-%d.png", cachepath, name, width, height) >= T4K_PATH_MAX) {
                 DEBUGMSG(debug_loaders, "load_sprite(): Path too long for default image\n");
@@ -1239,7 +1153,6 @@ sprite* load_sprite(const char* name, int mode, int w, int h, bool proportional)
             width = new_sprite->default_img->w;
             height = new_sprite->default_img->h;
 
-<<<<<<< Updated upstream
             if (shouldcache)
             {
                 len = snprintf(NULL, 0, "%s/images/%sd-%d-%d.png", cachepath, name, width, height);
@@ -1267,39 +1180,6 @@ sprite* load_sprite(const char* name, int mode, int w, int h, bool proportional)
                 }
             }
         }
-=======
-	    if (shouldcache)
-	    {
-		/* cache loaded sprites in PNG files */
-//		sprintf(pngfn, "%s/" IMAGE_DIR "/%sd-%d-%d.png", cachepath, name, width, height);
-		int ret = snprintf(pngfn, sizeof(pngfn), "%s/" IMAGE_DIR "/%sd-%d-%d.png",
-						cachepath, name, width, height);
-
-		if (ret < 0 || ret >= (int)sizeof(pngfn)) {
-			fprintf(stderr, "Error: pngfn path truncated: '%s/" IMAGE_DIR "/%s...'\n", cachepath, name);
-			return NULL; // or appropriate error handling
-		}
-
-		if(T4K_CheckFile(pngfn)!=1)
-		    savePNG(new_sprite->default_img,pngfn);
-		for(i=0; i<new_sprite->num_frames; i++)
-		{
-//		    sprintf(pngfn, "%s/" IMAGE_DIR "/%s%d-%d-%d.png", cachepath, name, i, width, height);
-			int ret = snprintf(pngfn, sizeof(pngfn), "%s/" IMAGE_DIR "/%s%d-%d-%d.png",
-							cachepath, name, i, width, height);
-
-			if (ret < 0 || ret >= (int)sizeof(pngfn)) {
-				fprintf(stderr, "Error: pngfn path truncated: '%s/" IMAGE_DIR "/%s%d-%d-%d.png'\n",
-						cachepath, name, i, width, height);
-				return NULL;  // Or handle error as appropriate
-			}
-
-		    if(T4K_CheckFile(pngfn)!=1)
-			savePNG(new_sprite->frame[i],pngfn);
-		}
-	    }
-	}
->>>>>>> Stashed changes
     }
 #endif
 
@@ -1585,7 +1465,6 @@ static int do_png_save(FILE * fi, const char *const fname, SDL_Surface * surf)
     unsigned char **png_rows;
     Uint8 r, g, b, a;
     int x, y, count;
-<<<<<<< Updated upstream
 
     /* Get pixel format details and palette */
     const SDL_PixelFormatDetails* format_details = SDL_GetPixelFormatDetails(surf->format);
@@ -1601,114 +1480,6 @@ static int do_png_save(FILE * fi, const char *const fname, SDL_Surface * surf)
         fclose(fi);
         fprintf(stderr, "\nError: Couldn't create PNG write struct!\n%s\n\n", fname);
         return 0;
-=======
- // Uint32(*getpixel) (SDL_Surface *, int, int) =getpixels[surf->format->BytesPerPixel];
-	const SDL_PixelFormatDetails* details = SDL_GetPixelFormatDetails(surf->format);
-	Uint32 (*getpixel)(SDL_Surface*, int, int) = getpixels[details->bytes_per_pixel];
-    png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    if (png_ptr == NULL)
-    {
-	fclose(fi);
-	png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
-
-	fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
-	return 0;
-    }
-    else
-    {
-	info_ptr = png_create_info_struct(png_ptr);
-	if (info_ptr == NULL)
-	{
-	    fclose(fi);
-	    png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
-
-	    fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
-	    //draw_tux_text(TUX_OOPS, strerror(errno), 0);
-	}
-	else
-	{
-	    if (setjmp(png_jmpbuf(png_ptr)))
-	    {
-		fclose(fi);
-		png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
-
-		fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
-		//draw_tux_text(TUX_OOPS, strerror(errno), 0);
-	    }
-	    else
-	    {
-		png_init_io(png_ptr, fi);
-
-	png_set_IHDR(png_ptr, info_ptr, surf->w, surf->h, 8,
-		PNG_COLOR_TYPE_RGB_ALPHA,  PNG_INTERLACE_NONE,
-                PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-
-
-		png_set_sRGB_gAMA_and_cHRM(png_ptr, info_ptr,
-			PNG_sRGB_INTENT_PERCEPTUAL);
-
-		/* Set headers */
-
-		count = 0;
-
-		/*
-		   if (title != NULL && strlen(title) > 0)
-		   {
-		   text_ptr[count].key = "Title";
-		   text_ptr[count].text = title;
-		   text_ptr[count].compression = PNG_TEXT_COMPRESSION_NONE;
-		   count++;
-		   }
-		   */
-
-		text_ptr[count].key = (png_charp) "Software";
-		text_ptr[count].text =
-		    (png_charp) PACKAGE_STRING /*VER_VERSION " (" VER_DATE ")"*/;
-		text_ptr[count].compression = PNG_TEXT_COMPRESSION_NONE;
-		count++;
-
-		png_set_text(png_ptr, info_ptr, text_ptr, count);
-
-		png_write_info(png_ptr, info_ptr);
-
-
-
-		/* Save the picture: */
-
-		png_rows = malloc(sizeof(char *) * surf->h);
-		const SDL_PixelFormatDetails *details = SDL_GetPixelFormatDetails(surf->format);
-		for (y = 0; y < surf->h; y++)
-		{
-		    png_rows[y] = malloc(sizeof(char) * 4 * surf->w);
-
-		    for (x = 0; x < surf->w; x++)
-		    {
-//			SDL_GetRGBA(getpixel(surf, x, y), surf->format, &r, &g, &b, &a);
-        	SDL_GetRGBA(getpixel(surf, x, y), details, NULL, &r, &g, &b, &a);
-			png_rows[y][x * 4 + 0] = r;
-			png_rows[y][x * 4 + 1] = g;
-			png_rows[y][x * 4 + 2] = b;
-			png_rows[y][x * 4 + 3] = a;
-		    }
-		}
-
-		png_write_image(png_ptr, png_rows);
-
-		for (y = 0; y < surf->h; y++)
-		    free(png_rows[y]);
-
-		free(png_rows);
-
-
-		png_write_end(png_ptr, NULL);
-
-		png_destroy_write_struct(&png_ptr, &info_ptr);
-		fclose(fi);
-
-		return 1;
-	    }
-	}
->>>>>>> Stashed changes
     }
 
     info_ptr = png_create_info_struct(png_ptr);
